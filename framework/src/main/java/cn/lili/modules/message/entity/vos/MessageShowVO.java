@@ -1,0 +1,41 @@
+package cn.lili.modules.message.entity.vos;
+
+import cn.lili.modules.message.entity.enums.MessageShowType;
+import cn.lili.modules.message.entity.enums.RangeEnum;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * 消息
+ *
+ * @author Chopper
+ * @since 2020/12/2 17:50
+ */
+@Data
+@Schema(description = "消息")
+@AllArgsConstructor
+@NoArgsConstructor
+public class MessageShowVO {
+
+    private static final long serialVersionUID = 1L;
+
+    @Schema(description = "标题")
+    private String title;
+
+    /**
+     * @see MessageShowType
+     */
+    @Schema(description = "消息类型")
+    private String type;
+
+    @Schema(description = "消息内容")
+    private String content;
+    /**
+     * @see RangeEnum
+     */
+    @Schema(description = "发送范围")
+    private String messageRange;
+
+}
