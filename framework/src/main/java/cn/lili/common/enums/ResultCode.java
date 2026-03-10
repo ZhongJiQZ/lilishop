@@ -511,6 +511,25 @@ public enum ResultCode {
     IM_MESSAGE_EDIT_ERROR(80400,"IM消息更新错误"),
 
     /**
+     * 圈子（帖子/动态）模块 - 错误码从 80500 开始
+     */
+    CIRCLE_POST_CONTENT_REQUIRED(80500, "帖子内容不能为空"),
+    CIRCLE_POST_NOT_EXIST(80501, "帖子不存在或已删除"),
+    CIRCLE_POST_DELETE_ERROR(80502, "删除帖子失败，非本人或无权限"),
+    CIRCLE_POST_LIKE_REPEAT(80503, "已经点赞过，请勿重复操作"),
+    CIRCLE_POST_LIKE_NOT_EXIST(80504, "未点赞，无法取消"),
+    CIRCLE_POST_COMMENT_CONTENT_REQUIRED(80505, "评论内容不能为空"),
+    CIRCLE_POST_COMMENT_NOT_EXIST(80506, "评论不存在或已删除"),
+    CIRCLE_POST_COMMENT_DELETE_ERROR(80507, "删除评论失败，非本人或无权限"),
+    CIRCLE_POST_GOODS_REPEAT(80508, "同一商品不能重复关联到帖子"),
+    CIRCLE_POST_GOODS_NOT_EXIST(80509, "关联的商品不存在或已下架"),
+    CIRCLE_POST_PUBLISH_ERROR(80510, "发布帖子失败，请稍后重试"),
+    CIRCLE_POST_UPDATE_ERROR(80511, "编辑帖子失败，已发布或无权限"),
+    CIRCLE_POST_IMAGE_LIMIT_EXCEED(80512, "上传图片数量超过限制（最多9张）"),
+    CIRCLE_POST_PERMISSION_DENIED(80513, "无权操作该帖子"),
+    CIRCLE_POST_STATUS_INVALID(80514, "帖子状态异常，无法操作"),
+
+    /**
      * 其他
      */
     CUSTOM_WORDS_EXIST_ERROR(90000, "当前自定义分词已存在！"),
