@@ -31,6 +31,10 @@ public class OssSetting implements Serializable {
      * 阿里云-储存空间
      */
     private String aliyunOSSBucketName = "";
+    /**
+     * CDN 加速域名
+     */
+    private String aliyunCDNDomain = "";
 //    /**
 //     * 阿里云-存放路径路径
 //     */

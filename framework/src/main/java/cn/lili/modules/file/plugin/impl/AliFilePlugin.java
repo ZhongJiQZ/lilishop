@@ -12,6 +12,7 @@ import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.DeleteObjectsRequest;
 import com.aliyun.oss.model.ObjectMetadata;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.InputStream;
@@ -56,6 +57,9 @@ public class AliFilePlugin implements FilePlugin {
      * @return
      */
     private String getUrlPrefix() {
+        if (StringUtils.isNotBlank(ossSetting.getAliyunCDNDomain())) {
+            return "https://" + ossSetting.getAliyunCDNDomain() + "/";
+        }
         return "https://" + ossSetting.getAliyunOSSBucketName() + "." + ossSetting.getAliyunOSSEndPoint() + "/";
     }
 
