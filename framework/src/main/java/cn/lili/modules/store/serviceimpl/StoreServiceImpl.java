@@ -44,12 +44,15 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static cn.lili.modules.member.service.MemberService.DEFAULT_PASSWORD;
 
 /**
  * 店铺业务层实现
@@ -219,6 +222,12 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             Member member = memberService.getById(store.getMemberId());
             member.setHaveStore(true);
             member.setStoreId(id);
+            // 关联卖家账号，同步会员信息：username为手机号、password默认加密
+            StoreDetail storeDetail = storeDetailService.getOne(new QueryWrapper<StoreDetail>().eq("store_id", id));
+            member.setUsername(storeDetail.getLinkPhone());
+            if(DEFAULT_PASSWORD.equals(member.getPassword())) {
+                member.setPassword(new BCryptPasswordEncoder().encode(member.getPassword()));
+            }
             memberService.updateById(member);
             //创建店员
             ClerkAddDTO clerkAddDTO = new ClerkAddDTO();

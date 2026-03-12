@@ -199,14 +199,25 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
             throw new ServiceException(ResultCode.STORE_NOT_LOGIN_ERROR);
         }
         LambdaQueryWrapper<ImTalk> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.and(wq -> wq.eq(ImTalk::getUserId1, authUser.getStoreId()).or().eq(ImTalk::getUserId2, authUser.getStoreId()));
+        String storeId;
+        if(authUser.getStoreId()==null){
+            Member member = memberService.getById(authUser.getId());
+            if(member!=null && member.getHaveStore() && member.getStoreId()!=null){
+                storeId = member.getStoreId();
+            } else {
+                storeId = authUser.getStoreId();
+            }
+        } else{
+            storeId = authUser.getStoreId();
+        }
+        queryWrapper.and(wq -> wq.eq(ImTalk::getUserId1, storeId).or().eq(ImTalk::getUserId2, storeId));
         if (CharSequenceUtil.isNotEmpty(imTalkQueryParams.getUserName())) {
-            queryWrapper.and(wq -> wq.ne(ImTalk::getUserId1, authUser.getStoreId()).like(ImTalk::getName1, imTalkQueryParams.getUserName()).or().ne(ImTalk::getUserId2, authUser.getStoreId()).like(ImTalk::getName2, imTalkQueryParams.getUserName()));
+            queryWrapper.and(wq -> wq.ne(ImTalk::getUserId1, storeId).like(ImTalk::getName1, imTalkQueryParams.getUserName()).or().ne(ImTalk::getUserId2, storeId).like(ImTalk::getName2, imTalkQueryParams.getUserName()));
         }
         queryWrapper.orderByDesc(ImTalk::getLastTalkTime);
         List<ImTalk> imTalks = this.list(queryWrapper);
 
-        List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> new ImTalkVO(imTalk, authUser.getStoreId())).collect(Collectors.toList());
+        List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> new ImTalkVO(imTalk, storeId)).collect(Collectors.toList());
         getUnread(imTalkVOList);
         return imTalkVOList;
     }
