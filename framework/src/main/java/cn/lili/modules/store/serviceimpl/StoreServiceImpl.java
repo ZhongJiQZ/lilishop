@@ -209,6 +209,32 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         storeDetailService.update(storeDetail, new QueryWrapper<StoreDetail>().eq("store_id", storeEditDTO.getStoreId()));
     }
 
+    /**
+     * 检测会员
+     *
+     * @param userName    会员名称
+     * @param mobilePhone 手机号
+     */
+    private void checkMember(String userName, String mobilePhone) {
+        //判断手机号是否存在
+        if (findMember(mobilePhone, userName) > 0) {
+            throw new ServiceException(ResultCode.USER_EXIST);
+        }
+    }
+
+    /**
+     * 根据手机号获取会员
+     *
+     * @param mobilePhone 手机号
+     * @return 会员
+     */
+    private Long findMember(String mobilePhone, String userName) {
+        QueryWrapper<Member> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("mobile", mobilePhone)
+                .or().eq("username", userName);
+        return memberService.count(queryWrapper);
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean audit(String id, Integer passed) {
@@ -222,9 +248,12 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             Member member = memberService.getById(store.getMemberId());
             member.setHaveStore(true);
             member.setStoreId(id);
-            // 关联卖家账号，同步会员信息：username为手机号、password默认加密
+            //关联卖家账号，同步会员信息：username为手机号、password默认加密
             StoreDetail storeDetail = storeDetailService.getOne(new QueryWrapper<StoreDetail>().eq("store_id", id));
+            //检测会员信息
+            checkMember(storeDetail.getLinkPhone(), storeDetail.getLinkPhone());
             member.setUsername(storeDetail.getLinkPhone());
+            member.setMobile(storeDetail.getLinkPhone());
             if(DEFAULT_PASSWORD.equals(member.getPassword())) {
                 member.setPassword(new BCryptPasswordEncoder().encode(member.getPassword()));
             }
