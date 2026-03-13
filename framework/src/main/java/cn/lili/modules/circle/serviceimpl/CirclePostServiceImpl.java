@@ -6,6 +6,7 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
+import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.modules.circle.entity.dos.CirclePost;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentSearchParams;
 import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
@@ -49,9 +50,11 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         queryWrapper.eq("c.status", 1);
         IPage<CirclePostVO> circlePostList = this.baseMapper.getCirclePostList(PageUtil.initPage(circlePostSearchParams), queryWrapper);
         circlePostList.getRecords().forEach(circlePost -> {
+            circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
             CirclePostCommentSearchParams params = new CirclePostCommentSearchParams();
             params.setPostId(circlePost.getContentId());
             circlePost.setCommentList(circlePostCommentService.getCirclePostCommentByList(params));
+
         });
         return circlePostList;
     }

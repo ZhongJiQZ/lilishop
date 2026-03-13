@@ -1,5 +1,6 @@
 package cn.lili.modules.circle.entity.vos;
 
+import com.alibaba.fastjson2.JSON;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -29,11 +30,17 @@ public class CirclePostVO {
     private String content;
 
     @Schema(description = "商品图片")
-    private List<String> goodsGalleryList;
+    private String images;
+//    private List<String> goodsGalleryList;
 
     @Schema(description = "评论数量")
     private Integer commentCount = 0;
 
     @Schema(description = "评论列表")
     private List<CirclePostCommentVO> commentList;
+
+    public List<String> getImages() {
+        return JSON.parseArray(this.images, String.class); // Fastjson
+        // 或 ObjectMapper.readValue(product.getImages(), new TypeReference<List<String>>(){});
+    }
 }

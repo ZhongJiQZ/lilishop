@@ -6,6 +6,7 @@ import cn.lili.cache.Cache;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
+import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.modules.im.config.CustomSpringConfigurator;
 import cn.lili.modules.im.entity.dos.ImMessage;
 import cn.lili.modules.im.entity.dos.ImTalk;
@@ -188,6 +189,7 @@ public class WebSocketServer {
                     .set(ImTalk::getLastTalkMessage, messageOperation.getContext())
                     .set(ImTalk::getLastTalkTime, imMessage.getCreateTime())
                     .set(ImTalk::getLastMessageType, imMessage.getMessageType()));
+                imMessage.setText(SensitiveWordsFilter.filter(imMessage.getText()));
                 //发送消息
                 sendMessage(messageOperation.getTo(), new MessageVO(MessageResultType.MESSAGE, imMessage));
                 // 关键：同时推给发送方和接收方

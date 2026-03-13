@@ -5,11 +5,11 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
+import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.modules.im.entity.dos.ImMessage;
 import cn.lili.modules.im.entity.dto.MessageQueryParams;
 import cn.lili.modules.im.mapper.ImMessageMapper;
 import cn.lili.modules.im.service.ImMessageService;
-import cn.lili.modules.im.service.ImTalkService;
 import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -76,6 +76,9 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
     @Override
     public List<ImMessage> getList(MessageQueryParams messageQueryParams) {
         List<ImMessage> messageList = this.page(PageUtil.initPage(messageQueryParams), messageQueryParams.initQueryWrapper()).getRecords();
+        messageList.forEach(message -> {
+            message.setText(SensitiveWordsFilter.filter(message.getText()));
+        });
         ListSort(messageList);
         readMessage(messageList);
         return messageList;
