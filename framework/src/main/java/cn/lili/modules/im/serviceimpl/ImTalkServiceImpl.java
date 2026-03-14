@@ -20,6 +20,7 @@ import cn.lili.modules.store.service.StoreService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
  *
  * @author Chopper
  */
+@Slf4j
 @Service
 @Transactional(rollbackFor = Exception.class)
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
@@ -220,6 +222,77 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> new ImTalkVO(imTalk, storeId)).collect(Collectors.toList());
         getUnread(imTalkVOList);
         return imTalkVOList;
+    }
+
+    @Override
+    public String matchByUser() {
+        AuthUser currentUser = UserContext.getCurrentUser();
+        if (currentUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+
+        // 获取当前用户关联的店铺ID（如果有）
+        String excludeStoreId = currentUser.getStoreId();
+
+        if(excludeStoreId == null){
+            Member member = memberService.getById(currentUser.getId());
+            if(member!=null && member.getHaveStore() && member.getStoreId()!=null){
+                excludeStoreId = member.getStoreId();
+            }
+        }
+
+        // 兼容：商家角色但 storeId 为空时，从 Member 表再查一次
+        if (CharSequenceUtil.isBlank(excludeStoreId)) {
+            Member member = memberService.getById(currentUser.getId());
+            if (member != null && Boolean.TRUE.equals(member.getHaveStore())
+                    && CharSequenceUtil.isNotBlank(member.getStoreId())) {
+                excludeStoreId = member.getStoreId();
+            }
+        }
+
+        // 构建查询条件：不加 disable 和 open 限制，直接查询所有店铺
+        LambdaQueryWrapper<Store> query = new LambdaQueryWrapper<>();
+        query.eq(Store::getStoreDisable, "OPEN");
+
+        // 关键：排除自己的店铺（如果有关联店铺）
+        boolean hasExclude = CharSequenceUtil.isNotBlank(excludeStoreId);
+        if (hasExclude) {
+            query.ne(Store::getId, excludeStoreId);
+            log.info("用户 {} 有关联店铺 {}，匹配时已排除该店铺", currentUser.getId(), excludeStoreId);
+        }
+
+        // 获取排除后的店铺数量
+        long totalAvailable = storeService.count(query);
+
+        if (totalAvailable == 0) {
+            if (hasExclude) {
+                log.warn("排除用户自己的店铺后无其他店铺可匹配，用户ID: {}, 自己的店铺ID: {}",
+                        currentUser.getId(), excludeStoreId);
+            } else {
+                log.warn("当前系统无任何店铺可匹配，用户ID: {}", currentUser.getId());
+            }
+            return null;  // 或抛出异常：throw new ServiceException("暂无其他商家可匹配");
+        }
+
+        // 生成随机偏移（0 ~ totalAvailable-1）
+        long randomOffset = (long) (Math.random() * totalAvailable);
+
+        // 添加 LIMIT 取一条（条件已包含排除）
+        query.last("LIMIT " + randomOffset + ", 1");
+
+        Store randomStore = storeService.getOne(query);
+
+        if (randomStore == null) {
+            log.error("随机偏移 {} 后未找到店铺，排除后总数: {}, 用户ID: {}",
+                    randomOffset, totalAvailable, currentUser.getId());
+            return null;
+        }
+
+        log.info("为用户 {} 随机匹配到店铺: {} ({})，排除店铺: {}, 排除后可用总数: {}",
+                currentUser.getId(), randomStore.getId(), randomStore.getStoreName(),
+                excludeStoreId, totalAvailable);
+
+        return randomStore.getId();
     }
 
     /**

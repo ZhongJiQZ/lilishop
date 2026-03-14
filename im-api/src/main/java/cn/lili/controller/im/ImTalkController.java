@@ -54,6 +54,13 @@ public class ImTalkController {
         return ResultUtil.data(imTalkService.getTalkByUserId(userId));
     }
 
+    @Operation(summary = "随机匹配与某人聊天")
+    @Parameter(name = "userId", description = "用户ID", required = true)
+    @GetMapping("/match/user")
+    public ResultMessage<String> matchUser() {
+        return ResultUtil.data(imTalkService.matchByUser());
+    }
+
     @Operation(summary = "设置聊天置顶")
     @Parameter(name = "id", description = "聊天ID", required = true)
     @Parameter(name = "top", description = "是否置顶", required = true)
