@@ -16,6 +16,7 @@ import cn.lili.modules.im.service.ImTalkService;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.store.entity.dos.Store;
+import cn.lili.modules.store.entity.enums.StoreStatusEnum;
 import cn.lili.modules.store.service.StoreService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -25,8 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -48,6 +48,7 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
 
     @Autowired
     private ImMessageService imMessageService;
+
     @Override
     public ImTalk getTalkByUser(String userId) {
         LambdaQueryWrapper<ImTalk> queryWrapper = new LambdaQueryWrapper<>();
@@ -189,7 +190,62 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         }
         queryWrapper.orderByDesc(ImTalk::getLastTalkTime);
         List<ImTalk> imTalks = this.list(queryWrapper);
-        List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> new ImTalkVO(imTalk, authUser.getId())).collect(Collectors.toList());
+
+        Set<String> storeIds = new HashSet<>();
+        for (ImTalk t : imTalks) {
+            if (t.getStoreFlag1()) {
+                storeIds.add(t.getUserId1());
+            } else if (t.getStoreFlag2()) {
+                storeIds.add(t.getUserId2());
+            }
+        }
+
+        Set<String> memberIds = new HashSet<>();
+        if (storeIds != null && !storeIds.isEmpty()) {
+            memberIds = storeService.lambdaQuery()
+                    .in(Store::getId, storeIds)
+                    .select(Store::getMemberId)
+                    .list()
+                    .stream()
+                    .map(Store::getMemberId)
+                    .filter(Objects::nonNull)           // 防止 null 值
+                    .collect(Collectors.toSet());
+        }
+
+        Map<String, Member> memberMap;
+        if(memberIds!=null && memberIds.size()>0){
+            memberMap = memberService.lambdaQuery()
+                    .in(Member::getId, memberIds)
+                    .select(Member::getStoreId, Member::getNickName, Member::getFace)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(Member::getStoreId, m -> m));
+        } else {
+            memberMap = new HashMap<>();
+        }
+
+
+        List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> {
+            ImTalkVO imTalkVO = new ImTalkVO(imTalk, authUser.getId());
+            if (imTalk.getStoreFlag1()) {
+                Member opponentMember = memberMap.get(imTalk.getUserId1());
+                if (opponentMember != null) {
+                    String displayName = opponentMember.getNickName();
+                    String displayFace = opponentMember.getFace();
+                    imTalkVO.setName(displayName);
+                    imTalkVO.setFace(displayFace);
+                }
+            } else if (imTalk.getStoreFlag2()) {
+                Member opponentMember = memberMap.get(imTalk.getUserId2());
+                if (opponentMember != null) {
+                    String displayName = opponentMember.getNickName();
+                    String displayFace = opponentMember.getFace();
+                    imTalkVO.setName(displayName);
+                    imTalkVO.setFace(displayFace);
+                }
+            }
+            return imTalkVO;
+        }).collect(Collectors.toList());
         getUnread(imTalkVOList);
         return imTalkVOList;
     }
@@ -202,14 +258,14 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         }
         LambdaQueryWrapper<ImTalk> queryWrapper = new LambdaQueryWrapper<>();
         String storeId;
-        if(authUser.getStoreId()==null){
+        if (authUser.getStoreId() == null) {
             Member member = memberService.getById(authUser.getId());
-            if(member!=null && member.getHaveStore() && member.getStoreId()!=null){
+            if (member != null && member.getHaveStore() && member.getStoreId() != null) {
                 storeId = member.getStoreId();
             } else {
                 storeId = authUser.getStoreId();
             }
-        } else{
+        } else {
             storeId = authUser.getStoreId();
         }
         queryWrapper.and(wq -> wq.eq(ImTalk::getUserId1, storeId).or().eq(ImTalk::getUserId2, storeId));
@@ -234,9 +290,9 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         // 获取当前用户关联的店铺ID（如果有）
         String excludeStoreId = currentUser.getStoreId();
 
-        if(excludeStoreId == null){
+        if (excludeStoreId == null) {
             Member member = memberService.getById(currentUser.getId());
-            if(member!=null && member.getHaveStore() && member.getStoreId()!=null){
+            if (member != null && member.getHaveStore() && member.getStoreId() != null) {
                 excludeStoreId = member.getStoreId();
             }
         }
@@ -252,7 +308,7 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
 
         // 构建查询条件：不加 disable 和 open 限制，直接查询所有店铺
         LambdaQueryWrapper<Store> query = new LambdaQueryWrapper<>();
-        query.eq(Store::getStoreDisable, "OPEN");
+        query.eq(Store::getStoreDisable, StoreStatusEnum.OPEN.name());
 
         // 关键：排除自己的店铺（如果有关联店铺）
         boolean hasExclude = CharSequenceUtil.isNotBlank(excludeStoreId);
