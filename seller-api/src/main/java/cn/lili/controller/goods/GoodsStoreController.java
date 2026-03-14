@@ -1,6 +1,5 @@
 package cn.lili.controller.goods;
 
-import cn.lili.common.aop.annotation.DemoSite;
 import cn.lili.common.context.ThreadContextHolder;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
@@ -147,7 +146,7 @@ public class GoodsStoreController {
         return ResultUtil.success();
     }
 
-    @DemoSite
+//    @DemoSite
     @Operation(summary = "下架商品", description = "下架商品时使用")
     @Parameter(name = "goodsId", description = "商品ID", required = true)
     @PutMapping("/under")
@@ -165,7 +164,7 @@ public class GoodsStoreController {
         return ResultUtil.success();
     }
 
-    @DemoSite
+//    @DemoSite
     @Operation(summary = "删除商品")
     @PutMapping("/delete")
     @Parameter(name = "goodsId", description = "商品ID", required = true)

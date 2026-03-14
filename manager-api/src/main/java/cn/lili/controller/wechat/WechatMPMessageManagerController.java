@@ -28,7 +28,7 @@ public class WechatMPMessageManagerController {
     @Autowired
     private WechatMPMessageService wechatMPMessageService;
 
-    @DemoSite
+//    @DemoSite
     @GetMapping("/init")
     @Operation(summary = "初始化微信小程序消息订阅")
     public ResultMessage init() {
@@ -57,7 +57,7 @@ public class WechatMPMessageManagerController {
         return new ResultUtil<IPage<WechatMPMessage>>().setData(data);
     }
 
-    @DemoSite
+//    @DemoSite
     @PostMapping
     @Operation(summary = "新增微信小程序消息订阅")
     public ResultMessage<WechatMPMessage> save(WechatMPMessage wechatMPMessage) {
@@ -66,7 +66,7 @@ public class WechatMPMessageManagerController {
         return ResultUtil.data(wechatMPMessage);
     }
 
-    @DemoSite
+//    @DemoSite
     @PutMapping("/{id}")
     @Operation(summary = "更新微信小程序消息订阅")
     @Parameter(name = "id", description = "微信小程序消息订阅ID", required = true)
@@ -76,7 +76,7 @@ public class WechatMPMessageManagerController {
         return ResultUtil.data(wechatMPMessage);
     }
 
-    @DemoSite
+//    @DemoSite
     @DeleteMapping("/{ids}")
     @Operation(summary = "删除微信小程序消息订阅")
     @Parameter(name = "ids", description = "微信小程序消息订阅ID列表", required = true)

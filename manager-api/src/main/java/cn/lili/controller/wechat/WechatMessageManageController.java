@@ -33,7 +33,7 @@ public class WechatMessageManageController {
 
     @GetMapping("/init")
     @Operation(summary = "初始化微信消息")
-    @DemoSite
+//    @DemoSite
     public ResultMessage init() {
         wechatMessageService.init();
         return ResultUtil.success();
@@ -56,7 +56,7 @@ public class WechatMessageManageController {
         return ResultUtil.data(data);
     }
 
-    @DemoSite
+//    @DemoSite
     @PostMapping
     @Operation(summary = "新增微信消息")
     public ResultMessage<WechatMessage> save(WechatMessage wechatMessage) {
@@ -65,7 +65,7 @@ public class WechatMessageManageController {
         return ResultUtil.data(wechatMessage);
     }
 
-    @DemoSite
+//    @DemoSite
     @PutMapping("/{id}")
     @Operation(summary = "更新微信消息")
     @Parameter(name = "id", description = "微信消息ID", required = true)
@@ -74,7 +74,7 @@ public class WechatMessageManageController {
         return ResultUtil.data(wechatMessage);
     }
 
-    @DemoSite
+//    @DemoSite
     @DeleteMapping("/{ids}")
     @Operation(summary = "删除微信消息")
     @Parameter(name = "ids", description = "微信消息ID列表", required = true)

@@ -63,7 +63,7 @@ public class MemberManagerController {
         return ResultUtil.data(memberService.addMember(member));
     }
 
-    @DemoSite
+//    @DemoSite
     @PreventDuplicateSubmissions
     @SystemLogPoint(description = "修改会员信息", customerLog = "'修改的用户名称: ['+#managerMemberEditDTO.username+']'")
     @Operation(description = "修改会员基本信息")
@@ -73,7 +73,7 @@ public class MemberManagerController {
         return ResultUtil.data(memberService.updateMember(managerMemberEditDTO));
     }
 
-    @DemoSite
+//    @DemoSite
     @PreventDuplicateSubmissions
     @SystemLogPoint(description = "修改会员状态", customerLog = "'修改的会员名称: ['+#memberIds+']，是否开启: ['+#disabled+']'")
     @Operation(description = "修改会员状态,开启关闭会员")

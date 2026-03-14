@@ -46,7 +46,7 @@ public class PageDataManagerController {
     }
 
     @Operation(summary = "修改页面")
-    @DemoSite
+//    @DemoSite
     @PutMapping("/update/{id}")
     public ResultMessage<PageData> updatePageData(@Valid PageData pageData, 
             @Parameter(description = "页面ID", required = true) @NotNull @PathVariable String id) {
@@ -62,14 +62,14 @@ public class PageDataManagerController {
 
     @Operation(summary = "发布页面")
     @PutMapping("/release/{id}")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<PageData> release(
             @Parameter(description = "页面ID", required = true) @PathVariable String id) {
         return ResultUtil.data(pageDataService.releasePageData(id));
     }
 
     @Operation(summary = "删除页面")
-    @DemoSite
+//    @DemoSite
     @DeleteMapping("/remove/{id}")
     public ResultMessage<Object> remove(
             @Parameter(description = "页面ID", required = true) @PathVariable String id) {

@@ -28,7 +28,7 @@ public class RegionManagerController {
     @Autowired
     private RegionService regionService;
 
-    @DemoSite
+//    @DemoSite
     @PostMapping( "/sync")
     @Operation(summary = "同步高德行政地区数据")
     @Parameter(name = "url", description = "高德行政地区数据接口", required = true)
@@ -50,7 +50,7 @@ public class RegionManagerController {
         return ResultUtil.data(regionService.getItem(id));
     }
 
-    @DemoSite
+//    @DemoSite
     @PutMapping( "/{id}")
     @Operation(summary = "更新地区")
     @Parameter(name = "id", description = "地区ID", required = true)
@@ -62,7 +62,7 @@ public class RegionManagerController {
     }
 
 
-    @DemoSite
+//    @DemoSite
     @PostMapping( "/save")
     @Operation(summary = "增加地区")
     @Parameter(name = "region", description = "地区信息", required = true)
@@ -71,7 +71,7 @@ public class RegionManagerController {
         return ResultUtil.data(region);
     }
 
-    @DemoSite
+//    @DemoSite
     @DeleteMapping( "/{ids}")
     @Operation(summary = "批量通过id删除")
     @Parameter(name = "ids", description = "地区ID列表", required = true)

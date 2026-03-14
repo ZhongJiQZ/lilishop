@@ -31,7 +31,7 @@ public class SmsTemplateManagerController {
     @Operation(summary = "新增短信模板")
     @Parameter(name = "smsTemplate", description = "短信模板", required = true)
     @PostMapping
-    @DemoSite
+//    @DemoSite
     public ResultMessage<SmsTemplate> save(@Valid SmsTemplate smsTemplate) {
         smsTemplateService.addSmsTemplate(smsTemplate);
         return ResultUtil.success();
@@ -40,7 +40,7 @@ public class SmsTemplateManagerController {
     @Operation(summary = "删除短信模板")
     @Parameter(name = "templateCode", description = "短信模板CODE", required = true)
     @DeleteMapping
-    @DemoSite
+//    @DemoSite
     public ResultMessage<SmsTemplate> delete(String templateCode) {
         smsTemplateService.deleteSmsTemplate(templateCode);
         return ResultUtil.success();
@@ -49,7 +49,7 @@ public class SmsTemplateManagerController {
     @Operation(summary = "查询短信模板状态")
     @Parameter(name = "templateCode", description = "短信模板CODE", required = true)
     @PutMapping("/querySmsSign")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<SmsTemplate> querySmsSign() {
         smsTemplateService.querySmsTemplate();
         return ResultUtil.success();
@@ -58,7 +58,7 @@ public class SmsTemplateManagerController {
     @Operation(summary = "修改短信模板")
     @Parameter(name = "smsTemplate", description = "短信模板", required = true)
     @PutMapping("/modifySmsTemplate")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<SmsTemplate> modifySmsTemplate(@Valid SmsTemplate smsTemplate) {
         smsTemplateService.modifySmsTemplate(smsTemplate);
         return ResultUtil.success();

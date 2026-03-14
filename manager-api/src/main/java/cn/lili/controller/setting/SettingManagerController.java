@@ -46,7 +46,7 @@ public class SettingManagerController {
     private Cache<String> cache;
 
 
-    @DemoSite
+//    @DemoSite
     @Operation(summary = "更新配置")
     @Parameter(name = "key", description = "配置key", required = true)
     @Parameter(name = "configValue", description = "配置值", required = true)
@@ -68,7 +68,7 @@ public class SettingManagerController {
     }
 
 
-    @DemoSite
+//    @DemoSite
     @Operation(summary = "查看配置")
     @Parameter(name = "key", description = "配置key", required = true)
     @GetMapping( "/get/{key}")

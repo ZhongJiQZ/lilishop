@@ -43,7 +43,7 @@ public class StoreMenuManagerController {
     @Operation(description = "添加")
     @Parameter(name = "menu", description = "菜单对象")
     @PostMapping
-    @DemoSite
+//    @DemoSite
     public ResultMessage<StoreMenu> add(StoreMenu menu) {
         try {
             storeMenuService.saveOrUpdateMenu(menu);
@@ -57,7 +57,7 @@ public class StoreMenuManagerController {
     @Parameter(name = "id", description = "菜单ID", required = true)
     @Parameter(name = "menu", description = "菜单对象")
     @PutMapping("/{id}")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<StoreMenu> edit(@PathVariable String id, StoreMenu menu) {
         menu.setId(id);
         storeMenuService.saveOrUpdateMenu(menu);
@@ -67,7 +67,7 @@ public class StoreMenuManagerController {
     @Operation(description = "批量删除")
     @Parameter(name = "ids", description = "菜单ID列表", required = true)
     @DeleteMapping("/{ids}")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Menu> delByIds(@PathVariable List<String> ids) {
         storeMenuService.deleteIds(ids);
         return ResultUtil.success();

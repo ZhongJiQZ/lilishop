@@ -1,6 +1,5 @@
 package cn.lili.controller.goods;
 
-import cn.lili.common.aop.annotation.DemoSite;
 import cn.lili.common.aop.annotation.PreventDuplicateSubmissions;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
@@ -105,7 +104,7 @@ public class GoodsManagerController {
     @Parameter(name = "goodsId", description = "商品ID", required = true)
     @Parameter(name = "reason", description = "下架理由", required = true)
 
-    @DemoSite
+//    @DemoSite
     @PutMapping("/under")
     public ResultMessage<Object> underGoods(@RequestParam List<String> goodsId, @NotEmpty(message = "下架原因不能为空") @RequestParam String reason) {
 

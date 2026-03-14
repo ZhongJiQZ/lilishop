@@ -140,7 +140,7 @@ public class ClerkStoreController {
     @Operation(description = "禁/启 用 店员")
     @Parameter(name = "clerkId", description = "店员ID", required = true)
     @Parameter(name = "status", description = "状态", required = true)
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Object> disable(@PathVariable String clerkId, Boolean status) {
         clerkService.disable(clerkId, status);
         return ResultUtil.success();
@@ -159,7 +159,7 @@ public class ClerkStoreController {
     @PostMapping("/resetPassword/{ids}")
     @Operation(description = "重置密码")
     @Parameter(name = "ids", description = "店员ID列表", required = true)
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Object> resetPassword(@PathVariable List<String> ids) {
         clerkService.resetPassword(ids);
         return ResultUtil.success(ResultCode.USER_EDIT_SUCCESS);

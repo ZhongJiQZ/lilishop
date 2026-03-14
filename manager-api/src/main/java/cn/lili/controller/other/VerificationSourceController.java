@@ -56,7 +56,7 @@ public class VerificationSourceController {
     @PostMapping
     @Operation(summary = "新增验证码资源维护")
     @Parameter(description = "验证码资源信息", required = true)
-    @DemoSite
+//    @DemoSite
     public ResultMessage<VerificationSource> save(VerificationSource verificationSource) {
 
         verificationService.checkCreateVerification(verificationSource.getType(), verificationSource.getResource());
@@ -68,7 +68,7 @@ public class VerificationSourceController {
     @PutMapping("/{id}")
     @Operation(summary = "更新验证码资源维护")
 
-    @DemoSite
+//    @DemoSite
     public ResultMessage<VerificationSource> update(@Parameter(description = "验证码资源ID", required = true) @PathVariable String id, VerificationSource verificationSource) {
         verificationSource.setId(id);
         verificationService.checkCreateVerification(verificationSource.getType(), verificationSource.getResource());
@@ -80,7 +80,7 @@ public class VerificationSourceController {
     @DeleteMapping("/{ids}")
     @Parameter(description = "验证码资源ID列表", required = true)
     @Operation(summary = "删除验证码资源维护")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Object> delAllByIds(@PathVariable List<String> ids) {
 
         verificationSourceService.removeByIds(ids);

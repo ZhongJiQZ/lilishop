@@ -60,7 +60,7 @@ public class CategoryManagerController {
 
     @Operation(summary = "添加商品分类")
     @PostMapping
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Category> saveCategory(@Valid Category category) {
         //非顶级分类
         if (category.getParentId() != null && !"0".equals(category.getParentId())) {
@@ -80,7 +80,7 @@ public class CategoryManagerController {
 
     @Operation(summary = "修改商品分类")
     @PutMapping
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Category> updateCategory(@Valid CategoryVO category) {
         Category catTemp = categoryService.getById(category.getId());
         if (catTemp == null) {
@@ -94,7 +94,7 @@ public class CategoryManagerController {
     @Operation(summary = "通过id删除分类")
     @Parameter(description = "分类ID", required = true)
     @DeleteMapping("/{id}")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Category> delAllByIds(@NotNull @PathVariable String id) {
         Category category = new Category();
         category.setParentId(id);
@@ -116,7 +116,7 @@ public class CategoryManagerController {
    @Parameter(name = "goodsId", description = "分类ID", required = true)
     @Parameter(name = "enableOperations", description = "是否启用", required = true)
     @PutMapping("/disable/{id}")
-    @DemoSite
+//    @DemoSite
     public ResultMessage<Object> disable(@PathVariable String id, @RequestParam Boolean enableOperations) {
 
         Category category = categoryService.getById(id);

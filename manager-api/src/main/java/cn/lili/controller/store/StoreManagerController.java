@@ -93,7 +93,7 @@ public class StoreManagerController {
         return ResultUtil.success();
     }
 
-    @DemoSite
+//    @DemoSite
     @Operation(summary = "关闭店铺")
     @Parameter(name = "id", description = "店铺id", required = true)
     @PutMapping("/disable/{id}")
