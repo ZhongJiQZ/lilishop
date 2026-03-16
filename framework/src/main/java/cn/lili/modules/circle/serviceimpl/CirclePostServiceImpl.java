@@ -10,7 +10,9 @@ import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.modules.circle.entity.dos.CirclePost;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentSearchParams;
 import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
+import cn.lili.modules.circle.entity.dto.CirclePostPageDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostSearchParams;
+import cn.lili.modules.circle.entity.vos.CirclePostCommentVO;
 import cn.lili.modules.circle.entity.vos.CirclePostVO;
 import cn.lili.modules.circle.mapper.CirclePostMapper;
 import cn.lili.modules.circle.service.CirclePostCommentService;
@@ -19,12 +21,15 @@ import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.mapper.MemberMapper;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
 import cn.lili.mybatis.util.PageUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * 圈子帖子业务层实现
@@ -53,7 +58,11 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
             circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
             CirclePostCommentSearchParams params = new CirclePostCommentSearchParams();
             params.setPostId(circlePost.getContentId());
-            circlePost.setCommentList(circlePostCommentService.getCirclePostCommentByList(params));
+            List<CirclePostCommentVO> circlePostCommentByList = circlePostCommentService.getCirclePostCommentByList(params);
+            circlePostCommentByList.forEach(circlePostComment -> {
+                circlePostComment.setContent(SensitiveWordsFilter.filter(circlePostComment.getContent()));
+            });
+            circlePost.setCommentList(circlePostCommentByList);
 
         });
         return circlePostList;
@@ -68,12 +77,66 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
             throw new ServiceException(ResultCode.USER_NOT_LOGIN);
         }
         CirclePost circlePost = new CirclePost(circlePostOperationDTO);
-        circlePost.setUserId(Long.valueOf(tokenUser.getId()));
-        //检查圈子帖子
-        this.checkCirclePost(circlePost);
+        //买家端
+        if (CharSequenceUtil.equals(tokenUser.getRole().name(), UserEnums.MEMBER.name())) {
+            circlePost.setUserId(Long.valueOf(tokenUser.getId()));
+            circlePost.setUserType(UserEnums.STORE.name());
+            //检查圈子帖子
+            this.checkCirclePost(circlePost);
+        }
+        //店铺端
+        if (CharSequenceUtil.equals(tokenUser.getRole().name(), UserEnums.STORE.name())) {
+            circlePost.setUserId(Long.valueOf(tokenUser.getId()));
+            circlePost.setStoreId(tokenUser.getStoreId());
+            circlePost.setUserType(UserEnums.STORE.name());
+        }
         circlePost.setTitle(CharSequenceUtil.sub(circlePostOperationDTO.getContent(), 0, 20));
         //添加圈子帖子
         this.save(circlePost);
+    }
+
+    @Override
+    public IPage<CirclePost> queryCirclePostByParams(CirclePostPageDTO page) {
+        LambdaQueryWrapper<CirclePost> queryWrapper = new LambdaQueryWrapper<>();
+        if (page.getStoreId() != null) {
+            queryWrapper.eq(CirclePost::getStoreId, page.getStoreId());
+        }
+        if (page.getContent() != null) {
+            queryWrapper.like(CirclePost::getContent, page.getContent());
+        }
+        if (page.getIsHomeShow() != null) {
+            queryWrapper.eq(CirclePost::getIsHomeShow, page.getIsHomeShow());
+        }
+        return this.page(PageUtil.initPage(page), queryWrapper);
+    }
+
+    @Override
+    public void deleteCirclePosts(List<String> ids) {
+        AuthUser tokenUser = UserContext.getCurrentUser();
+        if (tokenUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException(ResultCode.PARAMS_ERROR, "帖子ID列表不能为空");
+        }
+        // 如果是卖家角色，只允许删除自己的帖子
+        if (UserEnums.STORE.equals(tokenUser.getRole())) {
+            String storeId = tokenUser.getStoreId();
+            if (CharSequenceUtil.isBlank(storeId)) {
+                throw new ServiceException(ResultCode.STORE_NOT_EXIST, "当前商家信息异常，无法删除帖子");
+            }
+
+            // 查询这些帖子中，有多少不是当前商家的
+            long notOwnCount = this.lambdaQuery()
+                    .in(CirclePost::getId, ids)
+                    .ne(CirclePost::getStoreId, storeId)
+                    .count();
+
+            if (notOwnCount > 0) {
+                throw new ServiceException(ResultCode.CIRCLE_POST_UPDATE_ERROR, "您只能删除自己店铺发布的帖子");
+            }
+        }
+        this.removeByIds(ids);
     }
 
     /**
@@ -88,6 +151,7 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         circlePost.setUserType(member.getStoreId()!=null? UserEnums.STORE.name():UserEnums.MEMBER.name());
         if (member.getStoreId() != null) {
             //判断当前用户是否为店铺
+            circlePost.setStoreId(member.getStoreId());
 //        if (Objects.requireNonNull(UserContext.getCurrentUser()).getRole().equals(UserEnums.STORE)) {
         } else {
             throw new ServiceException(ResultCode.STORE_NOT_LOGIN_ERROR);

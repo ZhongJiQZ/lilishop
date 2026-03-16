@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * 商品VO
+ * 圈子帖子VO
  *
  * @author lensing
  * @since 2026-03-09 15:18:56

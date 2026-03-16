@@ -1,5 +1,6 @@
 package cn.lili.modules.circle.serviceimpl;
 
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
@@ -14,6 +15,9 @@ import cn.lili.modules.circle.mapper.CirclePostCommentMapper;
 import cn.lili.modules.circle.mapper.CirclePostMapper;
 import cn.lili.modules.circle.service.CirclePostCommentService;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
+import cn.lili.mybatis.util.PageUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -54,7 +58,8 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
             throw new ServiceException(ResultCode.CIRCLE_POST_NOT_EXIST);
         }
         CirclePostComment circlePostComment = new CirclePostComment(commentOperationDTO);
-        circlePostComment.setUserId(Long.valueOf(tokenUser.getId()));
+//        CirclePostComment circlePostComment = CirclePostComment.fromDTO(commentOperationDTO);
+        circlePostComment.setUserId(tokenUser.getId());
         circlePostComment.setUserType(UserEnums.MEMBER.name());
 
         //添加评论
@@ -63,5 +68,65 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
             circlePost.setCommentCount(circlePost.getCommentCount()+1);
             circlePostMapper.updateById(circlePost);
         }
+    }
+
+    @Override
+    public List<CirclePostComment> getCommentCirclePostList(String circlePostId) {
+        AuthUser currentUser = UserContext.getCurrentUser();
+
+        // 校验该帖子是否属于当前店铺
+        if (UserEnums.STORE.equals(currentUser.getRole())) {
+            String storeId = currentUser.getStoreId();
+            if (storeId != null) {
+                CirclePost post = circlePostMapper.selectById(circlePostId);
+                if (post == null || !storeId.equals(post.getStoreId())) {
+                    throw new ServiceException("无权查看该帖子的评论");
+                }
+            }
+        }
+        return this.baseMapper.getCommentCirclePostList(circlePostId);
+    }
+
+    @Override
+    public IPage<CirclePostComment> queryByParams(CirclePostCommentSearchParams commentSearchParams) {
+//        return this.page(PageUtil.initPage(commentSearchParams), commentSearchParams.queryWrapper());
+        AuthUser tokenUser = UserContext.getCurrentUser();
+        if (tokenUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+
+        QueryWrapper<CirclePostComment> queryWrapper = commentSearchParams.queryWrapper();
+
+        String storeId = null;
+        if (UserEnums.STORE.equals(tokenUser.getRole())) {
+            storeId = tokenUser.getStoreId();
+            if (CharSequenceUtil.isBlank(storeId)) {
+                throw new ServiceException("当前商家信息异常，无法查询评论");
+            }
+            queryWrapper.eq("store_id", storeId);
+        }
+
+        // 使用自定义 Mapper 方法（如果 storeId 为 null，则不加限制）
+        return this.baseMapper.queryStoreCommentPage(
+                PageUtil.initPage(commentSearchParams),
+                queryWrapper
+        );
+    }
+
+    @Override
+    public long checkStorePermission(List<String> commentIds) {
+        AuthUser tokenUser = UserContext.getCurrentUser();
+        if (tokenUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+        long invalidCount = this.baseMapper.checkStorePermission(commentIds, tokenUser.getStoreId());
+        if (invalidCount > 0) {
+            throw new ServiceException("无权操作他人的帖子评论");
+        }
+        List<CirclePostComment> circlePostComments = this.baseMapper.selectByIds(commentIds);
+        if(circlePostComments!=null && circlePostComments.size()==0){
+            throw new ServiceException("帖子评论不存在");
+        }
+        return invalidCount;
     }
 }

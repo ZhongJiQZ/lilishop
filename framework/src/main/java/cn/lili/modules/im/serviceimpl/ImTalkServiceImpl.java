@@ -281,7 +281,7 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
     }
 
     @Override
-    public String matchByUser() {
+    public ImTalkVO matchByUser() {
         AuthUser currentUser = UserContext.getCurrentUser();
         if (currentUser == null) {
             throw new ServiceException(ResultCode.USER_NOT_LOGIN);
@@ -289,15 +289,6 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
 
         // 获取当前用户关联的店铺ID（如果有）
         String excludeStoreId = currentUser.getStoreId();
-
-        if (excludeStoreId == null) {
-            Member member = memberService.getById(currentUser.getId());
-            if (member != null && member.getHaveStore() && member.getStoreId() != null) {
-                excludeStoreId = member.getStoreId();
-            }
-        }
-
-        // 兼容：商家角色但 storeId 为空时，从 Member 表再查一次
         if (CharSequenceUtil.isBlank(excludeStoreId)) {
             Member member = memberService.getById(currentUser.getId());
             if (member != null && Boolean.TRUE.equals(member.getHaveStore())
@@ -306,49 +297,75 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
             }
         }
 
-        // 构建查询条件：不加 disable 和 open 限制，直接查询所有店铺
+        // 查询条件：正常营业的店铺，并排除自己（如果有关联店铺）
         LambdaQueryWrapper<Store> query = new LambdaQueryWrapper<>();
         query.eq(Store::getStoreDisable, StoreStatusEnum.OPEN.name());
-
-        // 关键：排除自己的店铺（如果有关联店铺）
-        boolean hasExclude = CharSequenceUtil.isNotBlank(excludeStoreId);
-        if (hasExclude) {
+        if (CharSequenceUtil.isNotBlank(excludeStoreId)) {
             query.ne(Store::getId, excludeStoreId);
-            log.info("用户 {} 有关联店铺 {}，匹配时已排除该店铺", currentUser.getId(), excludeStoreId);
         }
 
-        // 获取排除后的店铺数量
         long totalAvailable = storeService.count(query);
-
         if (totalAvailable == 0) {
-            if (hasExclude) {
-                log.warn("排除用户自己的店铺后无其他店铺可匹配，用户ID: {}, 自己的店铺ID: {}",
-                        currentUser.getId(), excludeStoreId);
-            } else {
-                log.warn("当前系统无任何店铺可匹配，用户ID: {}", currentUser.getId());
-            }
-            return null;  // 或抛出异常：throw new ServiceException("暂无其他商家可匹配");
-        }
-
-        // 生成随机偏移（0 ~ totalAvailable-1）
-        long randomOffset = (long) (Math.random() * totalAvailable);
-
-        // 添加 LIMIT 取一条（条件已包含排除）
-        query.last("LIMIT " + randomOffset + ", 1");
-
-        Store randomStore = storeService.getOne(query);
-
-        if (randomStore == null) {
-            log.error("随机偏移 {} 后未找到店铺，排除后总数: {}, 用户ID: {}",
-                    randomOffset, totalAvailable, currentUser.getId());
+            log.info("无可用店铺可匹配，当前用户: {}, 排除店铺: {}", currentUser.getId(), excludeStoreId);
             return null;
         }
 
-        log.info("为用户 {} 随机匹配到店铺: {} ({})，排除店铺: {}, 排除后可用总数: {}",
-                currentUser.getId(), randomStore.getId(), randomStore.getStoreName(),
-                excludeStoreId, totalAvailable);
+        // 随机取一条
+        long randomOffset = (long) (Math.random() * totalAvailable);
+        query.last("LIMIT " + randomOffset + ", 1");
 
-        return randomStore.getId();
+        Store randomStore = storeService.getOne(query);
+        if (randomStore == null) {
+            log.warn("随机偏移后未命中店铺，总数: {}, offset: {}", totalAvailable, randomOffset);
+            return null;
+        }
+
+        // 重要：把店铺ID当作 userId 传给 getTalkByUser，内部会自动创建或获取 ImTalk
+        String matchedUserId = randomStore.getId();  // 店铺ID 就是对方的 userId
+
+        // 复用已有的 getTalkByUser 方法，它会创建对话（如果不存在）
+        ImTalk imTalk = this.getTalkByUser(matchedUserId);
+        if (imTalk == null) {
+            log.error("匹配到店铺 {} 但创建/获取 ImTalk 失败", matchedUserId);
+            return null;
+        }
+
+        // 转成 VO，使用当前用户视角
+        ImTalkVO vo = new ImTalkVO(imTalk, currentUser.getId());
+
+        // 关键：获取店铺对应的会员信息
+        Member opponentMember = null;
+        if (randomStore.getMemberId() != null) {
+            opponentMember = memberService.getById(randomStore.getMemberId());
+        }
+
+        // 覆盖名称和头像，使用会员信息（如果存在）
+        if (opponentMember != null) {
+            // 优先使用会员昵称和头像
+            vo.setName(opponentMember.getNickName());
+            vo.setFace(opponentMember.getFace());
+
+            // 可选：如果会员昵称为空，再 fallback 到店铺名
+            if (CharSequenceUtil.isBlank(vo.getName())) {
+                vo.setName(randomStore.getStoreName());
+            }
+            if (CharSequenceUtil.isBlank(vo.getFace())) {
+                vo.setFace(randomStore.getStoreLogo());  // 假设 Store 有 storeLogo 字段
+            }
+        } else {
+            // 如果店铺没有关联会员，fallback 到店铺信息
+            vo.setName(randomStore.getStoreName());
+            vo.setFace(randomStore.getStoreLogo());  // 根据实际字段调整
+        }
+
+        // 因为是新匹配的对话，通常 unread = 0，但可以强制刷新一次未读数（可选）
+        // vo.setUnread(0L);  // 或调用
+        getUnread(Collections.singletonList(vo));
+
+        log.info("用户 {} 匹配到店铺 {} ({})，对话ID: {}",
+                currentUser.getId(), randomStore.getId(), randomStore.getStoreName(), imTalk.getId());
+
+        return vo;
     }
 
     /**

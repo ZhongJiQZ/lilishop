@@ -56,5 +56,5 @@ public interface ImTalkService extends IService<ImTalk> {
      */
     List<ImTalkVO> getStoreTalkList(IMTalkQueryParams imTalkQueryParams);
 
-    String matchByUser();
+    ImTalkVO matchByUser();
 }

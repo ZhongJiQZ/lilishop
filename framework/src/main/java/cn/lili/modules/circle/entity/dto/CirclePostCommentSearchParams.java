@@ -21,9 +21,11 @@ public class CirclePostCommentSearchParams extends PageVO {
 
     private static final long serialVersionUID = 2544015852728566887L;
 
-
-    @Schema(description = "帖子内容")
+    @Schema(description = "圈子帖子id")
     private String postId;
+
+    @Schema(description = "评论内容")
+    private String content;
 
     public <T> QueryWrapper<T> queryWrapper() {
         QueryWrapper<T> queryWrapper = new QueryWrapper<>();
@@ -31,6 +33,10 @@ public class CirclePostCommentSearchParams extends PageVO {
         // 统一使用 CharSequenceUtil.isNotEmpty() 处理字符串
         if (CharSequenceUtil.isNotEmpty(postId)) {
             queryWrapper.eq("post_id", postId);
+        }
+
+        if (CharSequenceUtil.isNotEmpty(content)) {
+            queryWrapper.like("c.content", content);
         }
 
         queryWrapper.eq("c.delete_flag", false);

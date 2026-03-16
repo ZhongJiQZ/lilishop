@@ -25,7 +25,7 @@ public class CirclePostCommentOperationDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Schema(description = "帖子ID", required = true)
-    private Long postId;
+    private String postId;
 
     @Schema(description = "评论内容", required = true)
     @NotEmpty(message = "评论内容不能为空")

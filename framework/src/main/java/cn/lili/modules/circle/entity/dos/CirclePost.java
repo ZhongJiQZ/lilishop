@@ -11,10 +11,11 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.hibernate.validator.constraints.Length;
+
+import java.util.List;
 
 /**
  * 圈子帖子
@@ -54,15 +55,22 @@ public class CirclePost extends BaseEntity {
     @Schema(description = "浏览数量")
     private Integer viewCount = 0;
 
-    @Schema(description = "发帖人 ID")
-    @NotNull(message = "发帖人不能为空")
+    @Schema(description = "店铺ID")
+//    @NotNull(message = "店铺ID不能为空")
+    private String storeId;
+
+    @Schema(description = "发帖人ID")
+//    @NotNull(message = "发帖人不能为空")
     private Long userId;
 
-    @Schema(description = "发帖人类型", required = true)
+    @Schema(description = "发帖人类型")
     private String userType;
 
     @Schema(description = "状态 1=正常 0=删除/隐藏")
     private Integer status = 1;
+
+    @Schema(description = "是否在首页显示 1=是 0=否")
+    private Integer isHomeShow = 0;
 
     /**
      * 无参构造
@@ -113,6 +121,10 @@ public class CirclePost extends BaseEntity {
             // 可以根据需求决定是否允许纯文字发帖
             // throw new ServiceException(ResultCode.CIRCLE_POST_NEED_IMAGES_OR_GOODS);
         }
+    }
+
+    public void setImages(List<String> images) {
+        this.images = JSON.toJSONString(images);
     }
 
     /**

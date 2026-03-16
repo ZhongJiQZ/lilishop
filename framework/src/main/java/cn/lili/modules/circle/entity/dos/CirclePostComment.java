@@ -25,10 +25,10 @@ public class CirclePostComment extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     @Schema(description = "帖子ID")
-    private Long postId;
+    private String postId;
 
     @Schema(description = "评论人ID")
-    private Long userId;
+    private String userId;
 
     @Schema(description = "评论人类型：STORE=商家 MEMBER=普通用户")
     private String userType;
@@ -50,10 +50,21 @@ public class CirclePostComment extends BaseEntity {
     @Schema(description = "状态：1=正常 0=删除")
     private Integer status = 1;
 
+    public CirclePostComment() {
+    }
+
     public CirclePostComment(CirclePostCommentOperationDTO dto) {
         this.postId = dto.getPostId();
         this.content = dto.getContent();
     }
+
+//    public static CirclePostComment fromDTO(CirclePostCommentOperationDTO dto) {
+//        CirclePostComment comment = new CirclePostComment();
+//        comment.setPostId(dto.getPostId());
+//        comment.setContent(dto.getContent());
+//        // 如果 DTO 还有其他字段，也复制
+//        return comment;
+//    }
 
     /**
      * 获取转义后的评论内容（防止 XSS）

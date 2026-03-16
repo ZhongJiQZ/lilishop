@@ -21,8 +21,14 @@ public class CirclePostSearchParams extends PageVO {
 
     private static final long serialVersionUID = 2544015852728566887L;
 
+    @Schema(description = "店铺ID")
+    private String storeId;
+
     @Schema(description = "帖子内容")
     private String content;
+
+    @Schema(description = "是否在首页显示 1=是 0=否")
+    private Integer isHomeShow;
 
     public <T> QueryWrapper<T> queryWrapper() {
         QueryWrapper<T> queryWrapper = new QueryWrapper<>();
@@ -31,6 +37,8 @@ public class CirclePostSearchParams extends PageVO {
         if (CharSequenceUtil.isNotEmpty(content)) {
             queryWrapper.like("content", content);
         }
+
+        queryWrapper.eq(isHomeShow != null, "ifnull(is_home_show, 0)", isHomeShow);
 
 //        queryWrapper.eq("c.delete_flag", false);
         return queryWrapper;

@@ -137,7 +137,10 @@ public class ParametersServiceImpl extends ServiceImpl<ParametersMapper, Paramet
         for (CategoryParameter categoryParameter : categoryParameterList) {
             parametersId.add(categoryParameter.getParameterId());
         }
-        return this.list(new LambdaQueryWrapper<Parameters>().in(Parameters::getId, parametersId));
+        if (parametersId != null && parametersId.size() > 0) {
+            return this.list(new LambdaQueryWrapper<Parameters>().in(Parameters::getId, parametersId));
+        }
+        return null;
     }
 
 //    /**

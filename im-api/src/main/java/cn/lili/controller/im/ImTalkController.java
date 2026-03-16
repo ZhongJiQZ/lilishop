@@ -57,7 +57,7 @@ public class ImTalkController {
     @Operation(summary = "随机匹配与某人聊天")
     @Parameter(name = "userId", description = "用户ID", required = true)
     @GetMapping("/match/user")
-    public ResultMessage<String> matchUser() {
+    public ResultMessage<ImTalkVO> matchUser() {
         return ResultUtil.data(imTalkService.matchByUser());
     }
 
