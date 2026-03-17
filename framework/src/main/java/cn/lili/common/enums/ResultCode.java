@@ -425,6 +425,8 @@ public enum ResultCode {
     FREIGHT_TEMPLATE_NOT_EXIST(50010, "当前模版不存在"),
     STORE_STATUS_ERROR(50011, "店铺在申请中或审核中，请勿重复操作"),
     STORE_DELIVER_ADDRESS_EXIST(50012,"请填写发货地址"),
+    STORE_ID_REQUIRED(50013, "店铺ID不能为空"),
+    STORE_MEMBER_NOT_EXIST(80509, "关联的会员不存在"),
 
     /**
      * 结算单
@@ -528,6 +530,9 @@ public enum ResultCode {
     CIRCLE_POST_IMAGE_LIMIT_EXCEED(80512, "上传图片数量超过限制（最多9张）"),
     CIRCLE_POST_PERMISSION_DENIED(80513, "无权操作该帖子"),
     CIRCLE_POST_STATUS_INVALID(80514, "帖子状态异常，无法操作"),
+    CIRCLE_COMMENT_NOT_EXIST(80515, "评论不存在或已删除"),
+    CIRCLE_COMMENT_PERMISSION_DENIED(80516, "无权操作该评论"),
+    CIRCLE_COMMENT_UPDATE_ERROR(80517, "编辑评论失败，无权限或状态异常"),
 
     /**
      * 其他

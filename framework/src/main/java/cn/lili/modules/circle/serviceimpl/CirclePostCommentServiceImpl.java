@@ -80,7 +80,7 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
             if (storeId != null) {
                 CirclePost post = circlePostMapper.selectById(circlePostId);
                 if (post == null || !storeId.equals(post.getStoreId())) {
-                    throw new ServiceException("无权查看该帖子的评论");
+                    throw new ServiceException(ResultCode.CIRCLE_COMMENT_PERMISSION_DENIED);
                 }
             }
         }
@@ -121,11 +121,11 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
         }
         long invalidCount = this.baseMapper.checkStorePermission(commentIds, tokenUser.getStoreId());
         if (invalidCount > 0) {
-            throw new ServiceException("无权操作他人的帖子评论");
+            throw new ServiceException(ResultCode.CIRCLE_COMMENT_PERMISSION_DENIED);
         }
         List<CirclePostComment> circlePostComments = this.baseMapper.selectByIds(commentIds);
         if(circlePostComments!=null && circlePostComments.size()==0){
-            throw new ServiceException("帖子评论不存在");
+            throw new ServiceException(ResultCode.CIRCLE_POST_COMMENT_NOT_EXIST);
         }
         return invalidCount;
     }

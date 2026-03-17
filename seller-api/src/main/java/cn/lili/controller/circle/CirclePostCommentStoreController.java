@@ -1,5 +1,6 @@
 package cn.lili.controller.circle;
 
+import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
@@ -62,7 +63,7 @@ public class CirclePostCommentStoreController {
 
         CirclePostComment comment = circlePostCommentService.getById(id);
         if (comment == null) {
-            throw new ServiceException("评论不存在或已删除");
+            throw new ServiceException(ResultCode.CIRCLE_COMMENT_NOT_EXIST);
         }
 
         if (UserEnums.STORE.equals(currentUser.getRole())) {
@@ -70,7 +71,7 @@ public class CirclePostCommentStoreController {
             if (storeId != null) {
                 CirclePost post = circlePostService.getById(comment.getPostId());
                 if (post == null || !storeId.equals(post.getStoreId())) {
-                    throw new ServiceException("无权查看该评论");
+                    throw new ServiceException(ResultCode.CIRCLE_COMMENT_PERMISSION_DENIED);
                 }
             }
         }
