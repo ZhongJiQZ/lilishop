@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -61,6 +62,7 @@ public class CirclePostStoreController {
         if( circlePost.getStoreId().equals(storeId)){
             throw new ServiceException(ResultCode.CIRCLE_POST_PERMISSION_DENIED);
         }
+//        circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
         return ResultUtil.data(circlePost);
     }
 
@@ -82,13 +84,17 @@ public class CirclePostStoreController {
     @Operation(summary = "编辑圈子帖子")
     @Parameter(name = "id", description = "圈子帖子ID", required = true)
     @PutMapping("/{id}")
-    public ResultMessage<CirclePost> update(@NotNull @PathVariable String id, @Valid @RequestBody CirclePost circlePost) {
+    public ResultMessage<CirclePost> update(@NotNull @PathVariable String id, @Valid @RequestBody CirclePostOperationDTO circlePostOperationDTO) {
         //获取当前登录商家账号
         String storeId = Objects.requireNonNull(UserContext.getCurrentUser()).getStoreId();
+        CirclePost circlePost = circlePostService.getById(id);
+        if(circlePost == null){
+            return ResultUtil.error(ResultCode.CIRCLE_POST_NOT_EXIST);
+        }
         if(!circlePost.getStoreId().equals(storeId)){
             throw new ServiceException(ResultCode.CIRCLE_POST_UPDATE_ERROR);
         }
-        circlePost.setId(id);
+        BeanUtils.copyProperties(circlePostOperationDTO,circlePost);
         circlePostService.updateById(circlePost);
         return ResultUtil.data(circlePost);
     }

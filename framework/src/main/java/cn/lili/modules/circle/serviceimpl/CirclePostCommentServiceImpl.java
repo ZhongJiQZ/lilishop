@@ -6,6 +6,7 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
+import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.modules.circle.entity.dos.CirclePost;
 import cn.lili.modules.circle.entity.dos.CirclePostComment;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentOperationDTO;
@@ -84,7 +85,11 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
                 }
             }
         }
-        return this.baseMapper.getCommentCirclePostList(circlePostId);
+        List<CirclePostComment> commentCirclePostList = this.baseMapper.getCommentCirclePostList(circlePostId);
+        commentCirclePostList.forEach(circlePostComment -> {
+            circlePostComment.setContent(SensitiveWordsFilter.filter(circlePostComment.getContent()));
+        });
+        return commentCirclePostList;
     }
 
     @Override
@@ -106,11 +111,16 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
             queryWrapper.eq("store_id", storeId);
         }
 
-        // 使用自定义 Mapper 方法（如果 storeId 为 null，则不加限制）
-        return this.baseMapper.queryStoreCommentPage(
+        IPage<CirclePostComment> page = this.baseMapper.queryStoreCommentPage(
                 PageUtil.initPage(commentSearchParams),
                 queryWrapper
         );
+        page.getRecords().forEach(circlePostComment -> {
+            circlePostComment.setContent(SensitiveWordsFilter.filter(circlePostComment.getContent()));
+        });
+
+        // 使用自定义 Mapper 方法（如果 storeId 为 null，则不加限制）
+        return page;
     }
 
     @Override

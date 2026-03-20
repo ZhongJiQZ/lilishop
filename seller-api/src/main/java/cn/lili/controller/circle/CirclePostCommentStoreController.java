@@ -6,6 +6,7 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
+import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.circle.entity.dos.CirclePost;
 import cn.lili.modules.circle.entity.dos.CirclePostComment;
@@ -75,6 +76,7 @@ public class CirclePostCommentStoreController {
                 }
             }
         }
+        comment.setContent(SensitiveWordsFilter.filter(comment.getContent()));
 
         return ResultUtil.data(circlePostCommentService.getById(id));
     }

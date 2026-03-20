@@ -1,23 +1,22 @@
 package cn.lili.controller.circle;
 
-import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
-import cn.lili.common.exception.ServiceException;
-import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.circle.entity.dos.CirclePost;
+import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostPageDTO;
 import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
-import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.service.StoreService;
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,26 +55,15 @@ public class CirclePostManagerController {
     @Parameter(name = "id", description = "圈子帖子ID", required = true)
     @GetMapping("/get/{id}")
     public ResultMessage<CirclePost> getById(@NotNull @PathVariable String id) {
-        return ResultUtil.data(circlePostService.getById(id));
+        CirclePost circlePost = circlePostService.getById(id);
+//        circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
+        return ResultUtil.data(circlePost);
     }
 
     @Operation(summary = "发布圈子帖子")
     @PostMapping(value = "/create")
-    public ResultMessage<GoodsOperationDTO> save(@Valid @RequestBody CirclePost circlePost) {
-        if(circlePost.getStoreId() == null){
-            throw new ServiceException(ResultCode.STORE_ID_REQUIRED);
-        }
-        Store store = storeService.getById(circlePost.getStoreId());
-        if(store == null){
-            throw new ServiceException(ResultCode.STORE_NOT_EXIST);
-        }
-        if(store.getMemberId() == null){
-            throw new ServiceException(ResultCode.STORE_MEMBER_NOT_EXIST);
-        }
-        circlePost.setUserId(Long.valueOf(store.getMemberId()));
-        circlePost.setUserType(UserEnums.STORE.name());
-        circlePost.setTitle(CharSequenceUtil.sub(circlePost.getContent(), 0, 20));
-        circlePostService.save(circlePost);
+    public ResultMessage<GoodsOperationDTO> save(@Valid @RequestBody CirclePostOperationDTO circlePostOperationDTO) {
+        circlePostService.addCirclePost(circlePostOperationDTO);
         return ResultUtil.success();
     }
 
@@ -90,8 +78,13 @@ public class CirclePostManagerController {
     @Operation(summary = "编辑圈子帖子")
     @Parameter(name = "id", description = "圈子帖子ID", required = true)
     @PutMapping("/{id}")
-    public ResultMessage<CirclePost> update(@NotNull @PathVariable String id, @Valid @RequestBody CirclePost circlePost) {
-        circlePost.setId(id);
+    public ResultMessage<CirclePost> update(@NotNull @PathVariable String id, @Valid @RequestBody CirclePostOperationDTO circlePostOperationDTO) {
+        CirclePost circlePost = circlePostService.getById(id);
+        if(circlePost == null){
+            return ResultUtil.error(ResultCode.CIRCLE_POST_NOT_EXIST);
+        }
+        BeanUtils.copyProperties(circlePostOperationDTO,circlePost);
+        circlePost.setImages(JSON.toJSONString(circlePostOperationDTO.getImages()));
         circlePostService.updateById(circlePost);
         return ResultUtil.data(circlePost);
     }

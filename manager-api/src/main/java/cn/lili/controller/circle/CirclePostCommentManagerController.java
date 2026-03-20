@@ -1,6 +1,7 @@
 package cn.lili.controller.circle;
 
 import cn.lili.common.enums.ResultUtil;
+import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.circle.entity.dos.CirclePostComment;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentSearchParams;
@@ -49,7 +50,9 @@ public class CirclePostCommentManagerController {
     @Parameter(name = "id", description = "圈子帖子评论ID", required = true)
     @GetMapping("/get/{id}")
     public ResultMessage<CirclePostComment> getById(@NotNull @PathVariable String id) {
-        return ResultUtil.data(circlePostCommentService.getById(id));
+        CirclePostComment comment = circlePostCommentService.getById(id);
+        comment.setContent(SensitiveWordsFilter.filter(comment.getContent()));
+        return ResultUtil.data(comment);
     }
 
 //    @Operation(summary = "添加圈子帖子评论")

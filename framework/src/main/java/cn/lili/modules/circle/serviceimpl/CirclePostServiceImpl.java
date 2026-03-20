@@ -7,6 +7,7 @@ import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.sensitive.SensitiveWordsFilter;
+import cn.lili.common.utils.StringUtils;
 import cn.lili.modules.circle.entity.dos.CirclePost;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentSearchParams;
 import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
@@ -24,6 +25,7 @@ import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,7 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         circlePostSearchParams.setOrder("desc");
         QueryWrapper queryWrapper = circlePostSearchParams.queryWrapper();
         queryWrapper.eq("c.status", 1);
+        queryWrapper.orderByDesc("create_time");
         IPage<CirclePostVO> circlePostList = this.baseMapper.getCirclePostList(PageUtil.initPage(circlePostSearchParams), queryWrapper);
         circlePostList.getRecords().forEach(circlePost -> {
             circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
@@ -77,18 +80,16 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
             throw new ServiceException(ResultCode.USER_NOT_LOGIN);
         }
         CirclePost circlePost = new CirclePost(circlePostOperationDTO);
+        circlePost.setUserId(tokenUser.getId());
+        circlePost.setUserType(tokenUser.getRole().name());
         //买家端
         if (CharSequenceUtil.equals(tokenUser.getRole().name(), UserEnums.MEMBER.name())) {
-            circlePost.setUserId(Long.valueOf(tokenUser.getId()));
-            circlePost.setUserType(UserEnums.STORE.name());
             //检查圈子帖子
             this.checkCirclePost(circlePost);
         }
         //店铺端
         if (CharSequenceUtil.equals(tokenUser.getRole().name(), UserEnums.STORE.name())) {
-            circlePost.setUserId(Long.valueOf(tokenUser.getId()));
             circlePost.setStoreId(tokenUser.getStoreId());
-            circlePost.setUserType(UserEnums.STORE.name());
         }
         circlePost.setTitle(CharSequenceUtil.sub(circlePostOperationDTO.getContent(), 0, 20));
         //添加圈子帖子
@@ -98,16 +99,24 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
     @Override
     public IPage<CirclePost> queryCirclePostByParams(CirclePostPageDTO page) {
         LambdaQueryWrapper<CirclePost> queryWrapper = new LambdaQueryWrapper<>();
-        if (page.getStoreId() != null) {
+        if (StringUtils.isNotEmpty(page.getStoreId())) {
             queryWrapper.eq(CirclePost::getStoreId, page.getStoreId());
         }
-        if (page.getContent() != null) {
+        if (StringUtils.isNotEmpty(page.getContent())) {
             queryWrapper.like(CirclePost::getContent, page.getContent());
         }
         if (page.getIsHomeShow() != null) {
             queryWrapper.eq(CirclePost::getIsHomeShow, page.getIsHomeShow());
         }
-        return this.page(PageUtil.initPage(page), queryWrapper);
+        if (StringUtils.isNotEmpty(page.getUserId())) {
+            queryWrapper.eq(CirclePost::getUserId, page.getUserId());
+        }
+        queryWrapper.orderByDesc(CirclePost::getCreateTime);
+        Page<CirclePost> data = this.page(PageUtil.initPage(page), queryWrapper);
+        data.getRecords().forEach(circlePost -> {
+            circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
+        });
+        return data;
     }
 
     @Override

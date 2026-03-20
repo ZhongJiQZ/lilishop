@@ -21,6 +21,9 @@ public class CirclePostPageDTO extends PageVO {
 
     private static final long serialVersionUID = 8906820486037326039L;
 
+    @Schema(description = "会员ID")
+    private String userId;
+
     @Schema(description = "店铺ID")
     private String storeId;
 
@@ -28,8 +31,8 @@ public class CirclePostPageDTO extends PageVO {
     private String content;
 
     @Schema(description = "状态 1=正常 0=删除/隐藏")
-    private Integer status = 1;
+    private Integer status;
 
     @Schema(description = "是否在首页显示 1=是 0=否")
-    private Integer isHomeShow = 0;
+    private Integer isHomeShow;
 }

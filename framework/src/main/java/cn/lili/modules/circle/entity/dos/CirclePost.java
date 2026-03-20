@@ -15,8 +15,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.hibernate.validator.constraints.Length;
 
-import java.util.List;
-
 /**
  * 圈子帖子
  *
@@ -61,16 +59,16 @@ public class CirclePost extends BaseEntity {
 
     @Schema(description = "发帖人ID")
 //    @NotNull(message = "发帖人不能为空")
-    private Long userId;
+    private String userId;
 
     @Schema(description = "发帖人类型")
     private String userType;
 
     @Schema(description = "状态 1=正常 0=删除/隐藏")
-    private Integer status = 1;
+    private Integer status;
 
     @Schema(description = "是否在首页显示 1=是 0=否")
-    private Integer isHomeShow = 0;
+    private Integer isHomeShow;
 
     /**
      * 无参构造
@@ -123,9 +121,9 @@ public class CirclePost extends BaseEntity {
         }
     }
 
-    public void setImages(List<String> images) {
-        this.images = JSON.toJSONString(images);
-    }
+//    public void setImages(List<String> images) {
+//        this.images = JSON.toJSONString(images);
+//    }
 
     /**
      * 获取转义后的内容（防止 XSS）

@@ -44,6 +44,9 @@ public class CirclePostOperationDTO implements Serializable {
     @Schema(description = "关联商品ID列表（可选，带货帖子使用）")
     private List<Long> goodsIds = new ArrayList<>();
 
+    @Schema(description = "是否在首页显示 1=是 0=否")
+    private Integer isHomeShow;
+
 //    @Schema(description = "是否立即发布（默认立即发布）")
 //    @Builder.Default
 //    private Boolean release = true;
