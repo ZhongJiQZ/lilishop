@@ -10,6 +10,7 @@ import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostPageDTO;
 import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -85,16 +86,12 @@ public class CirclePostStoreController {
     @Parameter(name = "id", description = "圈子帖子ID", required = true)
     @PutMapping("/{id}")
     public ResultMessage<CirclePost> update(@NotNull @PathVariable String id, @Valid @RequestBody CirclePostOperationDTO circlePostOperationDTO) {
-        //获取当前登录商家账号
-        String storeId = Objects.requireNonNull(UserContext.getCurrentUser()).getStoreId();
         CirclePost circlePost = circlePostService.getById(id);
         if(circlePost == null){
             return ResultUtil.error(ResultCode.CIRCLE_POST_NOT_EXIST);
         }
-        if(!circlePost.getStoreId().equals(storeId)){
-            throw new ServiceException(ResultCode.CIRCLE_POST_UPDATE_ERROR);
-        }
         BeanUtils.copyProperties(circlePostOperationDTO,circlePost);
+        circlePost.setImages(JSON.toJSONString(circlePostOperationDTO.getImages()));
         circlePostService.updateById(circlePost);
         return ResultUtil.data(circlePost);
     }

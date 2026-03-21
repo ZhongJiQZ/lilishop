@@ -108,6 +108,7 @@ public class CirclePost extends BaseEntity {
         this.commentCount = 0;
         this.viewCount = 0;
         this.status = 1;
+        this.isHomeShow = dto.getIsHomeShow();
 
         // 校验必填项
         if (CharSequenceUtil.isBlank(this.content)) {
