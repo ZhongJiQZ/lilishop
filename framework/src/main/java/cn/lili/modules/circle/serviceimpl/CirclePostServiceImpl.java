@@ -9,6 +9,7 @@ import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.common.utils.StringUtils;
 import cn.lili.modules.circle.entity.dos.CirclePost;
+import cn.lili.modules.circle.entity.dos.CirclePostComment;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentSearchParams;
 import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostPageDTO;
@@ -119,6 +120,7 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         return data;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void deleteCirclePosts(List<String> ids) {
         AuthUser tokenUser = UserContext.getCurrentUser();
@@ -144,8 +146,33 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
             if (notOwnCount > 0) {
                 throw new ServiceException(ResultCode.CIRCLE_POST_UPDATE_ERROR, "您只能删除自己店铺发布的帖子");
             }
+        } else if (UserEnums.MEMBER.equals(tokenUser.getRole())) {
+            Member member = memberMapper.selectById(tokenUser.getId());
+            String storeId = "";
+            if (member != null && member.getHaveStore() && member.getStoreId() != null) {
+                storeId = member.getStoreId();
+            }
+            if (CharSequenceUtil.isBlank(storeId)) {
+                throw new ServiceException(ResultCode.STORE_NOT_EXIST, "当前商家信息异常，无法删除帖子");
+            }
+            // 查询这些帖子中，有多少不是当前商家的
+            long notOwnCount = this.lambdaQuery()
+                    .in(CirclePost::getId, ids)
+                    .ne(CirclePost::getStoreId, storeId)
+                    .count();
+
+            if (notOwnCount > 0) {
+                throw new ServiceException(ResultCode.CIRCLE_POST_UPDATE_ERROR, "您只能删除自己店铺发布的帖子");
+            }
         }
+        // 1. 删除帖子
         this.removeByIds(ids);
+        // 2. 删除关联的所有评论（使用 in 条件）
+        if (!ids.isEmpty()) {
+            circlePostCommentService.lambdaUpdate()
+                    .in(CirclePostComment::getPostId, ids)
+                    .remove();
+        }
     }
 
     /**

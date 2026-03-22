@@ -1,5 +1,6 @@
 package cn.lili.controller.circle;
 
+import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentOperationDTO;
@@ -11,10 +12,13 @@ import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 买家端,圈子帖子接口
@@ -52,5 +56,13 @@ public class CirclePostBuyerController {
     public ResultMessage<GoodsOperationDTO> addCirclePostComment(@Valid @RequestBody CirclePostCommentOperationDTO commentOperationDTO) {
         commentService.addCirclePostComment(commentOperationDTO);
         return ResultUtil.success();
+    }
+
+    @Operation(summary = "删除圈子帖子")
+    @Parameter(name = "ids", description = "圈子帖子ID", required = true)
+    @DeleteMapping("/delete/{ids}")
+    public ResultMessage<Object> delete(@PathVariable List<String> ids) {
+        circlePostService.deleteCirclePosts(ids);
+        return ResultUtil.success(ResultCode.SUCCESS);
     }
 }
