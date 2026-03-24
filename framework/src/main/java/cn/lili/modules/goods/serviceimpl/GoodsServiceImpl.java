@@ -6,6 +6,7 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.lili.modules.goods.entity.dto.GoodsParamsItemDTO;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
 import cn.lili.common.enums.ResultCode;
@@ -17,10 +18,11 @@ import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
 import cn.lili.modules.goods.entity.dos.*;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
-import cn.lili.modules.goods.entity.dto.GoodsParamsDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
 import cn.lili.modules.goods.entity.enums.GoodsAuthEnum;
+import cn.lili.modules.goods.entity.enums.GoodsSalesModeEnum;
 import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
+import cn.lili.modules.goods.entity.enums.GoodsTypeEnum;
 import cn.lili.modules.goods.entity.vos.GoodsNumVO;
 import cn.lili.modules.goods.entity.vos.GoodsSkuVO;
 import cn.lili.modules.goods.entity.vos.GoodsVO;
@@ -32,6 +34,8 @@ import cn.lili.modules.member.service.MemberEvaluationService;
 import cn.lili.modules.search.utils.EsIndexUtil;
 import cn.lili.modules.store.entity.dos.FreightTemplate;
 import cn.lili.modules.store.entity.dos.Store;
+import cn.lili.modules.store.entity.dos.FreightTemplateChild;
+import cn.lili.modules.store.entity.vos.FreightTemplateVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
 import cn.lili.modules.store.service.FreightTemplateService;
 import cn.lili.modules.store.service.StoreService;
@@ -69,6 +73,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements GoodsService {
+
+    private static final Set<String> TEMPLATE_STORE_ACCOUNTS = Set.of("template", "templete");
 
 
     /**
@@ -613,6 +619,145 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     @Override
     public void addGoodsCommentNum(Integer commentNum, String goodsId) {
         this.baseMapper.addGoodsCommentNum(commentNum, goodsId);
+    }
+
+    @Override
+    public String getTemplateStoreId() {
+        LambdaQueryWrapper<Store> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(Store::getMemberName, TEMPLATE_STORE_ACCOUNTS)
+                .or()
+                .in(Store::getStoreName, TEMPLATE_STORE_ACCOUNTS);
+        List<Store> stores = storeService.list(queryWrapper);
+        if (CollUtil.isEmpty(stores)) {
+            throw new ServiceException("未找到模板店铺，请先创建 template/templete 店铺账号");
+        }
+        return stores.get(0).getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void copyMinimalGoodsFromTemplate(String templateGoodsId) {
+        AuthUser currentStoreUser = this.checkStoreAuthority();
+        if (currentStoreUser == null) {
+            throw new ServiceException(ResultCode.STORE_NOT_LOGIN_ERROR);
+        }
+        String templateStoreId = this.getTemplateStoreId();
+        Goods templateGoods = this.checkExist(templateGoodsId);
+        if (!templateStoreId.equals(templateGoods.getStoreId())) {
+            throw new ServiceException("仅允许复制模板店铺商品");
+        }
+        GoodsVO templateGoodsVO = this.getGoodsVO(templateGoodsId);
+        GoodsOperationDTO goodsOperationDTO = this.buildMinimalCopyDTO(templateGoods, templateGoodsVO, templateStoreId);
+        this.addGoods(goodsOperationDTO);
+    }
+
+    private GoodsOperationDTO buildMinimalCopyDTO(Goods templateGoods, GoodsVO templateGoodsVO, String templateStoreId) {
+        GoodsOperationDTO dto = new GoodsOperationDTO();
+        dto.setGoodsName(templateGoods.getGoodsName());
+        dto.setGoodsType(templateGoods.getGoodsType());
+        // 极简链路统一按零售商品落库，避免批发规则导致复制失败。
+        dto.setSalesModel(GoodsSalesModeEnum.RETAIL.name());
+        dto.setGoodsUnit(templateGoods.getGoodsUnit());
+        dto.setPrice(templateGoods.getPrice());
+        dto.setCategoryPath(templateGoods.getCategoryPath());
+        dto.setBrandId(templateGoods.getBrandId());
+        dto.setSellingPoint(templateGoods.getSellingPoint());
+        dto.setIntro(templateGoods.getIntro());
+        dto.setMobileIntro(templateGoods.getMobileIntro());
+        dto.setGoodsVideo(templateGoods.getGoodsVideo());
+        dto.setRecommend(Boolean.TRUE.equals(templateGoods.getRecommend()));
+        dto.setRelease(GoodsStatusEnum.UPPER.name().equals(templateGoods.getMarketEnable()));
+        dto.setStoreCategoryPath(null);
+        dto.setGoodsParamsDTOList(Collections.emptyList());
+
+        if (GoodsTypeEnum.PHYSICAL_GOODS.name().equals(templateGoods.getGoodsType())) {
+            dto.setTemplateId(this.copyFreightTemplateToCurrentStore(templateGoods.getTemplateId(), templateStoreId));
+        } else {
+            dto.setTemplateId("0");
+        }
+
+        List<String> galleryList = CollUtil.isNotEmpty(templateGoodsVO.getGoodsGalleryList()) ?
+                templateGoodsVO.getGoodsGalleryList() : Collections.singletonList(templateGoods.getOriginal());
+        dto.setGoodsGalleryList(galleryList);
+
+        if (CollUtil.isEmpty(templateGoodsVO.getSkuList())) {
+            throw new ServiceException("模板商品缺少SKU信息，无法复制");
+        }
+        List<Map<String, Object>> skuList = new ArrayList<>();
+        for (GoodsSkuVO skuVO : templateGoodsVO.getSkuList()) {
+            Map<String, Object> skuMap = new LinkedHashMap<>();
+            if (CharSequenceUtil.isNotEmpty(skuVO.getSpecs())) {
+                JSONObject specsObj = JSON.parseObject(skuVO.getSpecs());
+                if (specsObj != null) {
+                    skuMap.putAll(specsObj);
+                }
+            }
+            if (!skuMap.containsKey("images")) {
+                if (CollUtil.isNotEmpty(skuVO.getGoodsGalleryList())) {
+                    skuMap.put("images", skuVO.getGoodsGalleryList());
+                } else {
+                    skuMap.put("images", galleryList);
+                }
+            }
+            skuMap.put("sn", skuVO.getSn());
+            skuMap.put("price", skuVO.getPrice());
+            skuMap.put("cost", skuVO.getCost());
+            skuMap.put("quantity", skuVO.getQuantity());
+            if (GoodsTypeEnum.PHYSICAL_GOODS.name().equals(templateGoods.getGoodsType())) {
+                skuMap.put("weight", skuVO.getWeight());
+            }
+            skuList.add(skuMap);
+        }
+        dto.setSkuList(skuList);
+        return dto;
+    }
+
+    private String copyFreightTemplateToCurrentStore(String sourceTemplateId, String templateStoreId) {
+        if (CharSequenceUtil.isEmpty(sourceTemplateId) || "0".equals(sourceTemplateId)) {
+            throw new ServiceException("模板商品缺少有效物流模板，无法复制");
+        }
+        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        String currentStoreId = authUser.getStoreId();
+        String autoName = "AUTO-COPY-" + sourceTemplateId;
+
+        List<FreightTemplateVO> targetStoreTemplates = freightTemplateService.getFreightTemplateList(currentStoreId);
+        Optional<FreightTemplateVO> existingTemplate = targetStoreTemplates.stream()
+                .filter(item -> autoName.equals(item.getName()))
+                .findFirst();
+        if (existingTemplate.isPresent()) {
+            return existingTemplate.get().getId();
+        }
+
+        FreightTemplateVO sourceTemplate = freightTemplateService.getFreightTemplate(sourceTemplateId);
+        if (sourceTemplate == null || !templateStoreId.equals(sourceTemplate.getStoreId())) {
+            throw new ServiceException("模板店铺物流模板不存在或不匹配");
+        }
+
+        FreightTemplateVO newTemplate = new FreightTemplateVO();
+        newTemplate.setName(autoName);
+        newTemplate.setPricingMethod(sourceTemplate.getPricingMethod());
+        if (CollUtil.isNotEmpty(sourceTemplate.getFreightTemplateChildList())) {
+            List<FreightTemplateChild> children = new ArrayList<>();
+            for (FreightTemplateChild sourceChild : sourceTemplate.getFreightTemplateChildList()) {
+                FreightTemplateChild child = new FreightTemplateChild();
+                child.setFirstCompany(sourceChild.getFirstCompany());
+                child.setFirstPrice(sourceChild.getFirstPrice());
+                child.setContinuedCompany(sourceChild.getContinuedCompany());
+                child.setContinuedPrice(sourceChild.getContinuedPrice());
+                child.setArea(sourceChild.getArea());
+                child.setAreaId(sourceChild.getAreaId());
+                children.add(child);
+            }
+            newTemplate.setFreightTemplateChildList(children);
+        }
+        freightTemplateService.addFreightTemplate(newTemplate);
+
+        List<FreightTemplateVO> refreshTemplates = freightTemplateService.getFreightTemplateList(currentStoreId);
+        return refreshTemplates.stream()
+                .filter(item -> autoName.equals(item.getName()))
+                .findFirst()
+                .map(FreightTemplate::getId)
+                .orElseThrow(() -> new ServiceException("复制物流模板失败"));
     }
 
     /**

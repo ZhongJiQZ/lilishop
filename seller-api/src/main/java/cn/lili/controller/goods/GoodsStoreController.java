@@ -6,6 +6,7 @@ import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.OperationalJudgment;
 import cn.lili.common.security.context.UserContext;
+import cn.lili.common.security.AuthUser;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.goods.entity.dos.Goods;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
@@ -37,6 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -50,6 +52,8 @@ import java.util.stream.Collectors;
 @Tag(name = "店铺端,商品接口")
 @RequestMapping("/store/goods/goods")
 public class GoodsStoreController {
+
+    private static final Set<String> TEMPLATE_ACCOUNTS = Set.of("template", "templete");
 
     /**
      * 商品
@@ -135,6 +139,7 @@ public class GoodsStoreController {
     @Operation(summary = "新增商品")
     @PostMapping(value = "/create", consumes = "application/json", produces = "application/json")
     public ResultMessage<GoodsOperationDTO> save(@Valid @RequestBody GoodsOperationDTO goodsOperationDTO) {
+        this.checkTemplateStorePermission();
         goodsService.addGoods(goodsOperationDTO);
         return ResultUtil.success();
     }
@@ -244,6 +249,29 @@ public class GoodsStoreController {
         String storeId = Objects.requireNonNull(UserContext.getCurrentUser()).getStoreId();
         goodsSkuService.importStock(storeId, files);
         return ResultUtil.success(ResultCode.SUCCESS);
+    }
+
+    @Operation(summary = "分页获取模板店铺商品列表")
+    @GetMapping("/template/list")
+    public ResultMessage<IPage<Goods>> templateGoodsList(GoodsSearchParams goodsSearchParams) {
+        goodsSearchParams.setStoreId(goodsService.getTemplateStoreId());
+        return ResultUtil.data(goodsService.queryByParams(goodsSearchParams));
+    }
+
+    @Operation(summary = "复制模板商品到当前店铺")
+    @PostMapping("/copy-template/{templateGoodsId}")
+    public ResultMessage<Object> copyTemplateGoods(@PathVariable String templateGoodsId) {
+        goodsService.copyMinimalGoodsFromTemplate(templateGoodsId);
+        return ResultUtil.success();
+    }
+
+    private void checkTemplateStorePermission() {
+        AuthUser currentUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        String username = currentUser.getUsername() == null ? "" : currentUser.getUsername().toLowerCase();
+        String storeName = currentUser.getStoreName() == null ? "" : currentUser.getStoreName().toLowerCase();
+        if (!TEMPLATE_ACCOUNTS.contains(username) && !TEMPLATE_ACCOUNTS.contains(storeName)) {
+            throw new ServiceException("仅模板店铺可直接创建商品，请使用模板复制");
+        }
     }
 
 

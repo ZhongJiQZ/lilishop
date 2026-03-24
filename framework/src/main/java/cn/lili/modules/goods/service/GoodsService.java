@@ -207,4 +207,18 @@ public interface GoodsService extends IService<Goods> {
      * @param goodsId    商品ID
      */
     void addGoodsCommentNum(Integer commentNum, String goodsId);
+
+    /**
+     * 获取模板店铺ID（template/templete）
+     *
+     * @return 模板店铺ID
+     */
+    String getTemplateStoreId();
+
+    /**
+     * 从模板店铺复制最小化商品信息到当前店铺
+     *
+     * @param templateGoodsId 模板商品ID
+     */
+    void copyMinimalGoodsFromTemplate(String templateGoodsId);
 }
