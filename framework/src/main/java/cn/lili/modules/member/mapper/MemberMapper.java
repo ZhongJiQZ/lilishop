@@ -28,7 +28,7 @@ public interface MemberMapper extends BaseMapper<Member> {
     @Select("SELECT m.mobile FROM li_member m")
     List<String> getAllMemberMobile();
 
-    @Select("SELECT m.*,mw.member_wallet FROM li_member m INNER JOIN li_member_wallet mw ON m.id=mw.member_id ${ew.customSqlSegment}")
+    @Select("SELECT m.*,IFNULL(mw.member_wallet, 0) AS member_wallet FROM li_member m LEFT JOIN li_member_wallet mw ON m.id=mw.member_id ${ew.customSqlSegment}")
     IPage<MemberVO> pageByMemberVO(IPage<MemberVO> page, @Param(Constants.WRAPPER) Wrapper<Member> queryWrapper);
 
     @Select("SELECT SUM( total_point ) AS totalPoint,SUM( point ) AS unUsedPoint FROM li_member")

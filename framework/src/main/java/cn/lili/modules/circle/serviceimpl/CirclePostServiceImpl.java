@@ -56,7 +56,6 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         circlePostSearchParams.setOrder("desc");
         QueryWrapper queryWrapper = circlePostSearchParams.queryWrapper();
         queryWrapper.eq("c.status", 1);
-        queryWrapper.orderByDesc("create_time");
         IPage<CirclePostVO> circlePostList = this.baseMapper.getCirclePostList(PageUtil.initPage(circlePostSearchParams), queryWrapper);
         circlePostList.getRecords().forEach(circlePost -> {
             circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
