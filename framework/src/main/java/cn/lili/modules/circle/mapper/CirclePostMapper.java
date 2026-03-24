@@ -24,7 +24,7 @@ public interface CirclePostMapper extends BaseMapper<CirclePost> {
      * @param queryWrapper 查询条件
      * @return 圈子帖子VO分页
      */
-    @Select("select c.id as contentId,content,images,comment_count,IFNULL(store_logo, u.avatar) store_logo,IFNULL(store_name, u.nick_name) store_name,user_type from li_circle_post c left join li_member m on m.id=c.user_id left join li_store s on s.member_id=m.id LEFT JOIN li_admin_user u ON u.id = c.user_id ${ew.customSqlSegment}")
+    @Select("select c.id as contentId,content,images,comment_count,IFNULL(store_logo, u.avatar) store_logo,IFNULL(store_name, u.nick_name) store_name,user_type,c.create_time from li_circle_post c left join li_member m on m.id=c.user_id left join li_store s on s.member_id=m.id LEFT JOIN li_admin_user u ON u.id = c.user_id ${ew.customSqlSegment}")
     IPage<CirclePostVO> getCirclePostList(IPage<ArticleVO> page, @Param(Constants.WRAPPER) Wrapper<ArticleVO> queryWrapper);
 
 //    /**
