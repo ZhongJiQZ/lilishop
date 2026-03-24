@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/store/goods/goods")
 public class GoodsStoreController {
 
-    private static final Set<String> TEMPLATE_ACCOUNTS = Set.of("template", "templete");
+    private static final String TEMPLATE_ACCOUNTS = "template";
 
     /**
      * 商品
@@ -269,7 +269,7 @@ public class GoodsStoreController {
         AuthUser currentUser = Objects.requireNonNull(UserContext.getCurrentUser());
         String username = currentUser.getUsername() == null ? "" : currentUser.getUsername().toLowerCase();
         String storeName = currentUser.getStoreName() == null ? "" : currentUser.getStoreName().toLowerCase();
-        if (!TEMPLATE_ACCOUNTS.contains(username) && !TEMPLATE_ACCOUNTS.contains(storeName)) {
+        if (!TEMPLATE_ACCOUNTS.equals(username) && !TEMPLATE_ACCOUNTS.contains(storeName)) {
             throw new ServiceException("仅模板店铺可直接创建商品，请使用模板复制");
         }
     }
