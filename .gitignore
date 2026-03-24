@@ -1,4 +1,6 @@
 /.idea/
+.cursor/
+.m2
 target
 *.iml
 *.class
