@@ -718,23 +718,26 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         }
         AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
         String currentStoreId = authUser.getStoreId();
-        String autoName = "AUTO-COPY-" + sourceTemplateId;
+        FreightTemplateVO sourceTemplate = freightTemplateService.getFreightTemplate(sourceTemplateId);
+        if (sourceTemplate == null || !templateStoreId.equals(sourceTemplate.getStoreId())) {
+            throw new ServiceException("模板店铺物流模板不存在或不匹配");
+        }
+        String targetTemplateName = sourceTemplate.getName();
+        if (CharSequenceUtil.isEmpty(targetTemplateName)) {
+            targetTemplateName = sourceTemplateId;
+        }
+        final String finalTemplateName = targetTemplateName;
 
         List<FreightTemplateVO> targetStoreTemplates = freightTemplateService.getFreightTemplateList(currentStoreId);
         Optional<FreightTemplateVO> existingTemplate = targetStoreTemplates.stream()
-                .filter(item -> autoName.equals(item.getName()))
+                .filter(item -> finalTemplateName.equals(item.getName()))
                 .findFirst();
         if (existingTemplate.isPresent()) {
             return existingTemplate.get().getId();
         }
 
-        FreightTemplateVO sourceTemplate = freightTemplateService.getFreightTemplate(sourceTemplateId);
-        if (sourceTemplate == null || !templateStoreId.equals(sourceTemplate.getStoreId())) {
-            throw new ServiceException("模板店铺物流模板不存在或不匹配");
-        }
-
         FreightTemplateVO newTemplate = new FreightTemplateVO();
-        newTemplate.setName(autoName);
+        newTemplate.setName(finalTemplateName);
         newTemplate.setPricingMethod(sourceTemplate.getPricingMethod());
         if (CollUtil.isNotEmpty(sourceTemplate.getFreightTemplateChildList())) {
             List<FreightTemplateChild> children = new ArrayList<>();
@@ -754,7 +757,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
 
         List<FreightTemplateVO> refreshTemplates = freightTemplateService.getFreightTemplateList(currentStoreId);
         return refreshTemplates.stream()
-                .filter(item -> autoName.equals(item.getName()))
+                .filter(item -> finalTemplateName.equals(item.getName()))
                 .findFirst()
                 .map(FreightTemplate::getId)
                 .orElseThrow(() -> new ServiceException("复制物流模板失败"));
