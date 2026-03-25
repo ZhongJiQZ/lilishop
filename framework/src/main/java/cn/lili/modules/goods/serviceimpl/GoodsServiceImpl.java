@@ -641,17 +641,36 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (currentStoreUser == null) {
             throw new ServiceException(ResultCode.STORE_NOT_LOGIN_ERROR);
         }
+        this.copyMinimalGoodsFromTemplate(templateGoodsId, currentStoreUser.getStoreId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void copyMinimalGoodsFromTemplate(String templateGoodsId, String targetStoreId) {
+        if (CharSequenceUtil.isEmpty(targetStoreId)) {
+            throw new ServiceException(ResultCode.STORE_NOT_EXIST);
+        }
         String templateStoreId = this.getTemplateStoreId();
         Goods templateGoods = this.checkExist(templateGoodsId);
         if (!templateStoreId.equals(templateGoods.getStoreId())) {
             throw new ServiceException("仅允许复制模板店铺商品");
         }
         GoodsVO templateGoodsVO = this.getGoodsVO(templateGoodsId);
-        GoodsOperationDTO goodsOperationDTO = this.buildMinimalCopyDTO(templateGoods, templateGoodsVO, templateStoreId);
-        this.addGoods(goodsOperationDTO);
+        GoodsOperationDTO goodsOperationDTO = this.buildMinimalCopyDTO(templateGoods, templateGoodsVO, templateStoreId, targetStoreId);
+        Goods goods = new Goods(goodsOperationDTO);
+        this.checkGoodsByStore(goods, targetStoreId);
+        if (goodsOperationDTO.getGoodsGalleryList().size() > 0) {
+            this.setGoodsGalleryParam(goodsOperationDTO.getGoodsGalleryList().get(0), goods);
+        }
+        this.save(goods);
+        this.goodsSkuService.add(goods, goodsOperationDTO);
+        if (goodsOperationDTO.getGoodsGalleryList() != null && !goodsOperationDTO.getGoodsGalleryList().isEmpty()) {
+            this.goodsGalleryService.add(goodsOperationDTO.getGoodsGalleryList(), goods.getId());
+        }
+        this.generateEs(goods);
     }
 
-    private GoodsOperationDTO buildMinimalCopyDTO(Goods templateGoods, GoodsVO templateGoodsVO, String templateStoreId) {
+    private GoodsOperationDTO buildMinimalCopyDTO(Goods templateGoods, GoodsVO templateGoodsVO, String templateStoreId, String targetStoreId) {
         GoodsOperationDTO dto = new GoodsOperationDTO();
         dto.setGoodsName(templateGoods.getGoodsName());
         dto.setGoodsType(templateGoods.getGoodsType());
@@ -671,7 +690,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         dto.setGoodsParamsDTOList(Collections.emptyList());
 
         if (GoodsTypeEnum.PHYSICAL_GOODS.name().equals(templateGoods.getGoodsType())) {
-            dto.setTemplateId(this.copyFreightTemplateToCurrentStore(templateGoods.getTemplateId(), templateStoreId));
+            dto.setTemplateId(this.copyFreightTemplateToCurrentStore(templateGoods.getTemplateId(), templateStoreId, targetStoreId));
         } else {
             dto.setTemplateId("0");
         }
@@ -712,12 +731,10 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         return dto;
     }
 
-    private String copyFreightTemplateToCurrentStore(String sourceTemplateId, String templateStoreId) {
+    private String copyFreightTemplateToCurrentStore(String sourceTemplateId, String templateStoreId, String targetStoreId) {
         if (CharSequenceUtil.isEmpty(sourceTemplateId) || "0".equals(sourceTemplateId)) {
             throw new ServiceException("模板商品缺少有效物流模板，无法复制");
         }
-        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
-        String currentStoreId = authUser.getStoreId();
         FreightTemplateVO sourceTemplate = freightTemplateService.getFreightTemplate(sourceTemplateId);
         if (sourceTemplate == null || !templateStoreId.equals(sourceTemplate.getStoreId())) {
             throw new ServiceException("模板店铺物流模板不存在或不匹配");
@@ -728,7 +745,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         }
         final String finalTemplateName = targetTemplateName;
 
-        List<FreightTemplateVO> targetStoreTemplates = freightTemplateService.getFreightTemplateList(currentStoreId);
+        List<FreightTemplateVO> targetStoreTemplates = freightTemplateService.getFreightTemplateList(targetStoreId);
         Optional<FreightTemplateVO> existingTemplate = targetStoreTemplates.stream()
                 .filter(item -> finalTemplateName.equals(item.getName()))
                 .findFirst();
@@ -755,12 +772,34 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         }
         freightTemplateService.addFreightTemplate(newTemplate);
 
-        List<FreightTemplateVO> refreshTemplates = freightTemplateService.getFreightTemplateList(currentStoreId);
+        List<FreightTemplateVO> refreshTemplates = freightTemplateService.getFreightTemplateList(targetStoreId);
         return refreshTemplates.stream()
                 .filter(item -> finalTemplateName.equals(item.getName()))
                 .findFirst()
                 .map(FreightTemplate::getId)
                 .orElseThrow(() -> new ServiceException("复制物流模板失败"));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean underGoodsByStore(List<String> goodsIds, String storeId, String underReason) {
+        if (CollUtil.isEmpty(goodsIds)) {
+            return true;
+        }
+        LambdaUpdateWrapper<Goods> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Goods::getStoreId, storeId);
+        updateWrapper.in(Goods::getId, goodsIds);
+        updateWrapper.set(Goods::getMarketEnable, GoodsStatusEnum.DOWN.name());
+        updateWrapper.set(Goods::getUnderMessage, underReason);
+        boolean result = this.update(updateWrapper);
+
+        LambdaQueryWrapper<Goods> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Goods::getStoreId, storeId);
+        queryWrapper.in(Goods::getId, goodsIds);
+        List<Goods> goodsList = this.list(queryWrapper);
+        List<String> scopedGoodsIds = goodsList.stream().map(Goods::getId).collect(Collectors.toList());
+        this.updateGoodsStatus(scopedGoodsIds, GoodsStatusEnum.DOWN, goodsList);
+        return result;
     }
 
     /**
@@ -899,6 +938,39 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         } else {
             throw new ServiceException(ResultCode.STORE_NOT_LOGIN_ERROR);
         }
+    }
+
+    private void checkGoodsByStore(Goods goods, String targetStoreId) {
+        switch (goods.getGoodsType()) {
+            case "PHYSICAL_GOODS":
+                if ("0".equals(goods.getTemplateId())) {
+                    throw new ServiceException(ResultCode.PHYSICAL_GOODS_NEED_TEMP);
+                }
+                break;
+            case "VIRTUAL_GOODS":
+                if (!"0".equals(goods.getTemplateId())) {
+                    goods.setTemplateId("0");
+                }
+                break;
+            default:
+                throw new ServiceException(ResultCode.GOODS_TYPE_ERROR);
+        }
+        goods.setCommentNum(0);
+        goods.setBuyCount(0);
+        goods.setQuantity(0);
+        goods.setGrade(100.0);
+
+        Setting setting = settingService.get(SettingEnum.GOODS_SETTING.name());
+        GoodsSetting goodsSetting = JSON.parseObject(setting.getSettingValue(), GoodsSetting.class);
+        goods.setAuthFlag(Boolean.TRUE.equals(goodsSetting.getGoodsCheck()) ? GoodsAuthEnum.TOBEAUDITED.name() : GoodsAuthEnum.PASS.name());
+
+        Store store = this.storeService.getById(targetStoreId);
+        if (store == null) {
+            throw new ServiceException(ResultCode.STORE_NOT_EXIST);
+        }
+        goods.setStoreId(store.getId());
+        goods.setStoreName(store.getStoreName());
+        goods.setSelfOperated(store.getSelfOperated());
     }
 
     /**

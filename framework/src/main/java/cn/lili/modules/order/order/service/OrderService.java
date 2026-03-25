@@ -55,6 +55,15 @@ public interface OrderService extends IService<Order> {
     IPage<OrderSimpleVO> queryByParams(OrderSearchParams orderSearchParams);
 
     /**
+     * 按店铺查询订单
+     *
+     * @param orderSearchParams 查询参数
+     * @param storeId           店铺ID
+     * @return 简短订单分页
+     */
+    IPage<OrderSimpleVO> queryByStoreId(OrderSearchParams orderSearchParams, String storeId);
+
+    /**
      * 获取订单数量
      *
      * @param orderSearchParams 查询参数

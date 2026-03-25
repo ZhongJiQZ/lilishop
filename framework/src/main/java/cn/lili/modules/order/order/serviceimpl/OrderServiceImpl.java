@@ -227,6 +227,23 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    public IPage<OrderSimpleVO> queryByStoreId(OrderSearchParams orderSearchParams, String storeId) {
+        QueryWrapper<OrderSimpleVO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("o.store_id", storeId);
+        queryWrapper.like(CharSequenceUtil.isNotEmpty(orderSearchParams.getKeywords()), "o.sn", orderSearchParams.getKeywords());
+        queryWrapper.like(CharSequenceUtil.isNotEmpty(orderSearchParams.getOrderSn()), "o.sn", orderSearchParams.getOrderSn());
+        queryWrapper.like(CharSequenceUtil.isNotEmpty(orderSearchParams.getGoodsName()), "oi.goods_name", orderSearchParams.getGoodsName());
+        queryWrapper.eq(CharSequenceUtil.isNotEmpty(orderSearchParams.getOrderStatus()), "o.order_status", orderSearchParams.getOrderStatus());
+        queryWrapper.eq(CharSequenceUtil.isNotEmpty(orderSearchParams.getPayStatus()), "o.pay_status", orderSearchParams.getPayStatus());
+        queryWrapper.ge(orderSearchParams.getStartDate() != null, "o.create_time", orderSearchParams.getStartDate());
+        queryWrapper.le(orderSearchParams.getEndDate() != null, "o.create_time", cn.lili.common.utils.DateUtil.endOfDate(orderSearchParams.getEndDate()));
+        queryWrapper.eq("o.delete_flag", false);
+        queryWrapper.groupBy("o.id");
+        queryWrapper.orderByDesc("o.id");
+        return this.baseMapper.queryByParams(PageUtil.initPage(orderSearchParams), queryWrapper);
+    }
+
+    @Override
     public OrderNumVO getOrderNumVO(OrderSearchParams orderSearchParams) {
         return this.baseMapper.getOrderNumVO(orderSearchParams.queryWrapper());
     }

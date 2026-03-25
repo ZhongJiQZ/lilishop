@@ -221,4 +221,22 @@ public interface GoodsService extends IService<Goods> {
      * @param templateGoodsId 模板商品ID
      */
     void copyMinimalGoodsFromTemplate(String templateGoodsId);
+
+    /**
+     * 从模板店铺复制最小化商品信息到指定店铺
+     *
+     * @param templateGoodsId 模板商品ID
+     * @param targetStoreId   目标店铺ID
+     */
+    void copyMinimalGoodsFromTemplate(String templateGoodsId, String targetStoreId);
+
+    /**
+     * 指定店铺下架商品
+     *
+     * @param goodsIds     商品ID集合
+     * @param storeId      店铺ID
+     * @param underReason  下架原因
+     * @return 操作结果
+     */
+    Boolean underGoodsByStore(List<String> goodsIds, String storeId, String underReason);
 }
