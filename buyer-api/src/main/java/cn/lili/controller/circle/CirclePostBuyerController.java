@@ -75,4 +75,11 @@ public class CirclePostBuyerController {
         followService.addStoreFollow(storeId);
         return ResultUtil.success();
     }
+
+    @Operation(summary = "取消店铺关注")
+    @DeleteMapping(value = "/{storeId}/follow")
+    public ResultMessage<Object> unfollowStore(@PathVariable String storeId) {
+        followService.unfollowStore(storeId);
+        return ResultUtil.success();
+    }
 }

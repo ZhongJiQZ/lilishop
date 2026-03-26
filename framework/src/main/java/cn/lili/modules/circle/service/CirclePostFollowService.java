@@ -27,4 +27,6 @@ public interface CirclePostFollowService extends IService<CirclePostFollow> {
      * @param storeId
      */
     void addStoreFollow(String storeId);
+
+    void unfollowStore(String storeId);
 }

@@ -10,6 +10,7 @@ import cn.lili.modules.circle.mapper.CirclePostFollowMapper;
 import cn.lili.modules.circle.service.CirclePostFollowService;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.mapper.StoreMapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,25 @@ public class CirclePostFollowServiceImpl extends ServiceImpl<CirclePostFollowMap
         circlePostFollow.setMemberId(tokenUser.getId());
         circlePostFollow.setFollowedMemberId(store.getMemberId());
         this.baseMapper.insert(circlePostFollow);
+    }
+
+    @Override
+    public void unfollowStore(String storeId) {
+        AuthUser tokenUser = UserContext.getCurrentUser();
+        if (tokenUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+        Store store = storeMapper.selectById(storeId);
+        if(store == null){
+            throw new ServiceException(ResultCode.STORE_NOT_EXIST);
+        }
+        CirclePostFollow circlePostFollow = this.baseMapper.selectOne(new QueryWrapper<CirclePostFollow>()
+                .eq("member_id", store.getMemberId())
+                .eq("followed_member_id", store.getMemberId())
+        );
+        if(circlePostFollow != null){
+            this.baseMapper.deleteById(circlePostFollow.getId());
+        }
     }
 
 }
