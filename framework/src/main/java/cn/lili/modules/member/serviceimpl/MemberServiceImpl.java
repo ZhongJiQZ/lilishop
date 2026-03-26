@@ -5,7 +5,6 @@ import cn.hutool.core.convert.Convert;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
-import cn.lili.common.aop.annotation.DemoSite;
 import cn.lili.common.context.ThreadContextHolder;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.SwitchEnum;
@@ -22,9 +21,11 @@ import cn.lili.common.vo.PageVO;
 import cn.lili.modules.connect.entity.Connect;
 import cn.lili.modules.connect.entity.dto.ConnectAuthUser;
 import cn.lili.modules.connect.service.ConnectService;
+import cn.lili.modules.member.aop.annotation.CoinLogPoint;
 import cn.lili.modules.member.aop.annotation.PointLogPoint;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.entity.dto.*;
+import cn.lili.modules.member.entity.enums.CoinTypeEnum;
 import cn.lili.modules.member.entity.enums.PointTypeEnum;
 import cn.lili.modules.member.entity.enums.QRCodeLoginSessionStatusEnum;
 import cn.lili.modules.member.entity.vo.MemberSearchVO;
@@ -841,6 +842,47 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
 
         }
         return result;
+    }
+
+
+    @Override
+    @CoinLogPoint
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean updateMemberCoin(long coin, String type, String memberId, String content) {
+        //获取当前会员信息
+        Member member = this.getById(memberId);
+        if (member != null) {
+            //平台币变动后的会员平台币
+            long currentCoin;
+            //会员总获得平台币
+            long totalCoin = member.getTotalCoin();
+            //如果增加平台币
+            if (type.equals(CoinTypeEnum.INCREASE.name())) {
+                currentCoin = member.getCoin() + coin;
+                //如果是增加平台币 需要增加总获得平台币
+                totalCoin = totalCoin + coin;
+            }
+            //否则扣除平台币
+            else {
+                currentCoin = member.getCoin() - coin < 0 ? 0 : member.getCoin() - coin;
+            }
+            member.setCoin(currentCoin);
+            member.setTotalCoin(totalCoin);
+            boolean result = this.updateById(member);
+            if (result) {
+                //发送会员消息
+                MemberCoinMessage memberCoinMessage = new MemberCoinMessage();
+                memberCoinMessage.setCoin(coin);
+                memberCoinMessage.setType(type);
+                memberCoinMessage.setMemberId(memberId);
+                applicationEventPublisher.publishEvent(new TransactionCommitSendMQEvent("update member coin",
+                        rocketmqCustomProperties.getMemberTopic(), MemberTagsEnum.MEMBER_COIN_CHANGE.name(), memberCoinMessage));
+                return true;
+            }
+            return false;
+
+        }
+        throw new ServiceException(ResultCode.USER_NOT_EXIST);
     }
 
     /**

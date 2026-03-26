@@ -36,6 +36,14 @@ public enum MemberTagsEnum {
      */
     MEMBER_POINT_CHANGE("会员积分变动"),
     /**
+     * 会员充值
+     */
+    MEMBER_RECHARGE("会员充值"),
+    /**
+     * 会员平台币变动
+     */
+    MEMBER_COIN_CHANGE("会员平台币变动"),
+    /**
      * 会员使用联合登录
      */
     MEMBER_CONNECT_LOGIN("会员使用联合登录");

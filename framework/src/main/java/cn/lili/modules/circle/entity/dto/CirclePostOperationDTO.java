@@ -33,6 +33,9 @@ public class CirclePostOperationDTO implements Serializable {
 //    @Length(max = 100, message = "帖子标题不能超过100个字符")
 //    private String title;
 
+    @Schema(description = "店铺ID")
+    private String storeId;
+
     @Schema(description = "帖子内容", required = true)
     @NotEmpty(message = "帖子内容不能为空")
     @Length(max = 2000, message = "帖子内容不能超过2000个字符")

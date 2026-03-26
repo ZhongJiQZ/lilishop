@@ -27,6 +27,8 @@ public enum SettingEnum {
     SMS_SETTING,
     //积分设置
     POINT_SETTING,
+    //平台币设置
+    COIN_SETTING,
     //经验值设置
     EXPERIENCE_SETTING,
     //秒杀活动设置
@@ -52,5 +54,9 @@ public enum SettingEnum {
     //银联支付设置
     UNIONPAY_PAYMENT,
     //热词设置
-    HOT_WORDS
+    HOT_WORDS,
+    //充值弹窗设置
+    RECHARGE_POPUP_SETTING,
+    //充值价格设置
+    RECHARGE_AMOUNT_SETTING
 }

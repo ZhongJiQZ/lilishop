@@ -91,6 +91,12 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         if (CharSequenceUtil.equals(tokenUser.getRole().name(), UserEnums.STORE.name())) {
             circlePost.setStoreId(tokenUser.getStoreId());
         }
+        //管理端
+        if (CharSequenceUtil.equals(tokenUser.getRole().name(), UserEnums.MANAGER.name())) {
+            if(StringUtils.isNotBlank(circlePost.getStoreId())) {
+                circlePost.setStoreId(circlePostOperationDTO.getStoreId());
+            }
+        }
         circlePost.setTitle(CharSequenceUtil.sub(circlePostOperationDTO.getContent(), 0, 20));
         //添加圈子帖子
         this.save(circlePost);

@@ -98,6 +98,14 @@ public class Member extends BaseEntity {
     @Schema(description = "经验值数量")
     private Long experience;
 
+    @Min(message = "必须为数字", value = 0)
+    @Schema(description = "平台币数量")
+    private Long coin;
+
+    @Min(message = "必须为数字", value = 0)
+    @Schema(description = "平台币总数量")
+    private Long totalCoin;
+
 
     public Member(String username, String password, String mobile) {
         this.username = username;
@@ -110,6 +118,8 @@ public class Member extends BaseEntity {
         this.point = 0L;
         this.totalPoint = 0L;
         this.lastLoginDate = new Date();
+        this.coin = 0L;
+        this.totalCoin = 0L;
     }
 
     public Member(String username, String password, String face, String nickName, Integer sex, String mobile) {
@@ -124,5 +134,7 @@ public class Member extends BaseEntity {
         this.point = 0L;
         this.totalPoint = 0L;
         this.lastLoginDate = new Date();
+        this.coin = 0L;
+        this.totalCoin = 0L;
     }
 }

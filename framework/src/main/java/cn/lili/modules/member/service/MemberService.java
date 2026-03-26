@@ -319,4 +319,15 @@ public interface MemberService extends IService<Member> {
     boolean appSConfirm(String token, Integer code);
 
     QRLoginResultVo loginWithSession(String token);
+
+    /**
+     * 会员平台币变动
+     *
+     * @param coin     变动平台币
+     * @param type     是否增加平台币 INCREASE 增加  REDUCE 扣减
+     * @param memberId 会员id
+     * @param content  变动日志
+     * @return 操作结果
+     */
+    Boolean updateMemberCoin(long coin, String type, String memberId, String content);
 }

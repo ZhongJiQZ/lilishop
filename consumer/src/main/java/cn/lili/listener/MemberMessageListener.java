@@ -2,10 +2,10 @@ package cn.lili.listener;
 
 import cn.hutool.json.JSONUtil;
 import cn.lili.event.*;
-import cn.lili.event.impl.ImTalkExecute;
 import cn.lili.modules.connect.entity.dto.MemberConnectLoginMessage;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.entity.dos.MemberSign;
+import cn.lili.modules.member.entity.dto.MemberCoinMessage;
 import cn.lili.modules.member.entity.dto.MemberPointMessage;
 import cn.lili.modules.member.service.MemberSignService;
 import cn.lili.modules.wallet.entity.dto.MemberWithdrawalMessage;
@@ -41,6 +41,11 @@ public class MemberMessageListener implements RocketMQListener<MessageExt> {
     @Autowired
     private List<MemberPointChangeEvent> memberPointChangeEvents;
     /**
+     * 会员平台币变化
+     */
+    @Autowired
+    private List<MemberCoinChangeEvent> memberCoinChangeEvents;
+    /**
      * 会员提现
      */
     @Autowired
@@ -50,6 +55,11 @@ public class MemberMessageListener implements RocketMQListener<MessageExt> {
      */
     @Autowired
     private List<MemberRegisterEvent> memberSignEvents;
+    /**
+     * 会员充值
+     */
+    @Autowired
+    private List<MemberRechargeEvent> memberRechargeEvents;
 
     /**
      * 会员注册
@@ -150,6 +160,34 @@ public class MemberMessageListener implements RocketMQListener<MessageExt> {
                         log.error("会员{},在{}业务中，状态修改事件执行异常",
                                 new String(messageExt.getBody()),
                                 memberConnectLoginEvent.getClass().getName(),
+                                e);
+                    }
+                }
+                break;
+            //会员充值
+            case MEMBER_RECHARGE:
+                for (MemberRechargeEvent memberRechargeEvent : memberRechargeEvents) {
+                    try {
+                        Member member = JSONUtil.toBean(new String(messageExt.getBody()), Member.class);
+                        memberRechargeEvent.memberRecharge(member);
+                    } catch (Exception e) {
+                        log.error("会员{},在{}业务中，状态修改事件执行异常",
+                                new String(messageExt.getBody()),
+                                memberRechargeEvent.getClass().getName(),
+                                e);
+                    }
+                }
+                break;
+            //会员平台币变动
+            case MEMBER_COIN_CHANGE:
+                for (MemberCoinChangeEvent memberCoinChangeEvent : memberCoinChangeEvents) {
+                    try {
+                        MemberCoinMessage memberCoinMessage = JSONUtil.toBean(new String(messageExt.getBody()), MemberCoinMessage.class);
+                        memberCoinChangeEvent.memberCoinChange(memberCoinMessage);
+                    } catch (Exception e) {
+                        log.error("会员{},在{}业务中，状态修改事件执行异常",
+                                new String(messageExt.getBody()),
+                                memberCoinChangeEvent.getClass().getName(),
                                 e);
                     }
                 }

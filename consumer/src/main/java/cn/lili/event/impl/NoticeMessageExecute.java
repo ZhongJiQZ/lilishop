@@ -1,7 +1,9 @@
 package cn.lili.event.impl;
 
 import cn.lili.event.*;
+import cn.lili.modules.member.entity.dto.MemberCoinMessage;
 import cn.lili.modules.member.entity.dto.MemberPointMessage;
+import cn.lili.modules.member.entity.enums.CoinTypeEnum;
 import cn.lili.modules.member.entity.enums.PointTypeEnum;
 import cn.lili.modules.message.entity.dto.NoticeMessageDTO;
 import cn.lili.modules.message.entity.enums.NoticeMessageNodeEnum;
@@ -31,7 +33,7 @@ import java.util.Map;
  * @since 2020-07-03 11:20
  **/
 @Service
-public class NoticeMessageExecute implements TradeEvent, OrderStatusChangeEvent, AfterSaleStatusChangeEvent, MemberPointChangeEvent, MemberWithdrawalEvent {
+public class NoticeMessageExecute implements TradeEvent, OrderStatusChangeEvent, AfterSaleStatusChangeEvent, MemberPointChangeEvent, MemberCoinChangeEvent, MemberWithdrawalEvent {
 
     @Autowired
     private NoticeMessageService noticeMessageService;
@@ -202,6 +204,28 @@ public class NoticeMessageExecute implements TradeEvent, OrderStatusChangeEvent,
         params.put("price", memberWithdrawalMessage.getPrice().toString());
         noticeMessageDTO.setParameter(params);
         //发送提现申请消息
+        noticeMessageService.noticeMessage(noticeMessageDTO);
+    }
+
+    @Override
+    public void memberCoinChange(MemberCoinMessage memberCoinMessage) {
+        if (memberCoinMessage == null) {
+            return;
+        }
+        //组织站内信参数
+        NoticeMessageDTO noticeMessageDTO = new NoticeMessageDTO();
+        noticeMessageDTO.setMemberId(memberCoinMessage.getMemberId());
+        Map<String, String> params = new HashMap<>(2);
+        if (memberCoinMessage.getType().equals(CoinTypeEnum.INCREASE.name())) {
+            params.put("expenditure_coins", "0");
+            params.put("income_coins", memberCoinMessage.getCoin().toString());
+        } else {
+            params.put("expenditure_coins", memberCoinMessage.getCoin().toString());
+            params.put("income_coins", "0");
+        }
+        noticeMessageDTO.setParameter(params);
+        noticeMessageDTO.setNoticeMessageNodeEnum(NoticeMessageNodeEnum.COIN_CHANGE);
+        //发送站内通知信息
         noticeMessageService.noticeMessage(noticeMessageDTO);
     }
 }

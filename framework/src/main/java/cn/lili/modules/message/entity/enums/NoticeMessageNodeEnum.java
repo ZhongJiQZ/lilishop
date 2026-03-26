@@ -45,6 +45,11 @@ public enum NoticeMessageNodeEnum {
     POINT_CHANGE("积分变更通知"),
 
     /**
+     * 平台币
+     */
+    COIN_CHANGE("平台币变更通知"),
+
+    /**
      * 用户余额
      */
     WALLET_CHANGE("余额账户变更通知"),

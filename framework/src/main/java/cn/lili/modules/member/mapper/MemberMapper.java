@@ -2,6 +2,7 @@ package cn.lili.modules.member.mapper;
 
 
 import cn.lili.modules.member.entity.dos.Member;
+import cn.lili.modules.member.entity.vo.MemberCoinsStatisticsVO;
 import cn.lili.modules.member.entity.vo.MemberPointsStatisticsVO;
 import cn.lili.modules.member.entity.vo.MemberVO;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
@@ -34,4 +35,6 @@ public interface MemberMapper extends BaseMapper<Member> {
     @Select("SELECT SUM( total_point ) AS totalPoint,SUM( point ) AS unUsedPoint FROM li_member")
     MemberPointsStatisticsVO queryMemberPointsStatistics();
 
+    @Select("SELECT SUM( total_coin ) AS totalCoin,SUM( coin ) AS unUsedCoin FROM li_member")
+    MemberCoinsStatisticsVO queryMemberCoinsStatistics();
 }
