@@ -1,6 +1,7 @@
 package cn.lili.modules.store.service;
 
 import cn.lili.common.vo.PageVO;
+import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
 import cn.lili.modules.member.entity.dto.CollectionDTO;
 import cn.lili.modules.store.entity.dos.Store;
@@ -139,4 +140,14 @@ public interface StoreService extends IService<Store> {
      * @return
      */
     IPage<StoreTradeRankingVO> getTradeRanking(PageVO page);
+
+    /**
+     * 分页条件查询
+     * 用于展示店铺粉丝列表
+     *
+     * @param storeId
+     * @param page
+     * @return
+     */
+    IPage<CirclePostFollowVO> getStoreFollows(String storeId, PageVO page);
 }

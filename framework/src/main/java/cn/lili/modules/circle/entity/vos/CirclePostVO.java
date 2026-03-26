@@ -20,6 +20,9 @@ public class CirclePostVO {
 
     private static final long serialVersionUID = 6377623919990713567L;
 
+    @Schema(description = "店铺ID")
+    private String storeId;
+
     @Schema(description = "店铺logo")
     private String storeLogo;
 
@@ -46,6 +49,9 @@ public class CirclePostVO {
 
     @Schema(description = "评论列表")
     private List<CirclePostCommentVO> commentList;
+
+    @Schema(description = "店铺粉丝列表")
+    private List<CirclePostFollowVO> followList;
 
     public List<String> getImages() {
         return JSON.parseArray(this.images, String.class); // Fastjson

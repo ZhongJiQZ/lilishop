@@ -105,3 +105,44 @@ CREATE TABLE li_circle_post_goods
     UNIQUE KEY uk_post_goods (post_id, goods_id),
     INDEX       idx_post_id (post_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='圈子帖子关联商品';
+
+--- 更新表
+DROP TABLE IF EXISTS `li_member_coins_history`;
+CREATE TABLE `li_member_coins_history`  (
+    `id` bigint NOT NULL COMMENT 'ID',
+    `create_by` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '创建者',
+    `create_time` datetime(6) NULL DEFAULT NULL COMMENT '创建时间',
+    `before_coin` bigint NULL DEFAULT NULL COMMENT '消费之前平台币',
+    `content` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '内容',
+    `member_id` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '会员ID',
+    `member_name` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '会员名称',
+    `coin` bigint NULL DEFAULT NULL COMMENT '当前平台币',
+    `coin_type` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '消费平台币类型',
+    `variable_coin` bigint NULL DEFAULT NULL COMMENT '消费平台币',
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = DYNAMIC;
+
+DROP TABLE IF EXISTS `li_circle_post_follow`;
+CREATE TABLE `li_circle_post_follow` (
+    `id` varchar(64) NOT NULL COMMENT '主键ID',
+    `member_id` varchar(64) NOT NULL COMMENT '关注者ID（当前用户）',
+    `followed_member_id` varchar(64) NOT NULL COMMENT '被关注者ID（作者）',
+    `create_time` datetime DEFAULT NULL COMMENT '关注时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_member_followed` (`member_id`,`followed_member_id`) USING BTREE COMMENT '唯一关注关系，防止重复关注',
+    KEY `idx_followed_member_id` (`followed_member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='圈子-用户关注表';
+
+ALTER TABLE li_circle_post
+    ADD COLUMN `need_follow` tinyint(1) DEFAULT 0 COMMENT '是否需要关注作者才能查看 0=不需要 1=需要'
+
+ALTER TABLE li_member
+    ADD COLUMN coin bigint DEFAULT NULL COMMENT '平台币',
+    ADD COLUMN total_coin bigint DEFAULT NULL COMMENT '平台币总数量',
+    ADD COLUMN is_vip bit(1) DEFAULT b'0' COMMENT '是否是VIP会员 0：普通用户 1：会员用户',
+    ADD COLUMN invite_code varchar(255) DEFAULT NULL COMMENT '【邀请码】每个会员唯一',
+    ADD COLUMN invite_status bit(1) DEFAULT b'0' COMMENT '邀请码状态 0=未填写 1=已填写',
+    ADD COLUMN inviter_id bigint DEFAULT NULL COMMENT '邀请人ID',
+    ADD COLUMN inviter_name varchar(255) DEFAULT NULL COMMENT '邀请人名称';
+
+ALTER TABLE li_member ADD UNIQUE INDEX uk_invite_code (invite_code);

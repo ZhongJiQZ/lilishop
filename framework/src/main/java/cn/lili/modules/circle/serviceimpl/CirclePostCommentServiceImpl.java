@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * 圈子帖子业务层实现
+ * 圈子帖子评论业务层实现
  *
  * @author lensing
  * @since 2026-03-09 15:18:56

@@ -15,9 +15,11 @@ import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostPageDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostSearchParams;
 import cn.lili.modules.circle.entity.vos.CirclePostCommentVO;
+import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
 import cn.lili.modules.circle.entity.vos.CirclePostVO;
 import cn.lili.modules.circle.mapper.CirclePostMapper;
 import cn.lili.modules.circle.service.CirclePostCommentService;
+import cn.lili.modules.circle.service.CirclePostFollowService;
 import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.mapper.MemberMapper;
@@ -48,6 +50,8 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
     @Autowired
     private CirclePostCommentService circlePostCommentService;
     @Autowired
+    private CirclePostFollowService circlePostFollowService;
+    @Autowired
     private MemberMapper memberMapper;
 
     @Override
@@ -66,7 +70,9 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
                 circlePostComment.setContent(SensitiveWordsFilter.filter(circlePostComment.getContent()));
             });
             circlePost.setCommentList(circlePostCommentByList);
-
+            //店铺粉丝列表
+            List<CirclePostFollowVO> followCirclePostList = circlePostFollowService.getFollowCirclePostList(circlePost.getContentId());
+            circlePost.setFollowList(followCirclePostList);
         });
         return circlePostList;
     }

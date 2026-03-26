@@ -8,6 +8,7 @@ import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostSearchParams;
 import cn.lili.modules.circle.entity.vos.CirclePostVO;
 import cn.lili.modules.circle.service.CirclePostCommentService;
+import cn.lili.modules.circle.service.CirclePostFollowService;
 import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -37,6 +38,8 @@ public class CirclePostBuyerController {
     private CirclePostService circlePostService;
     @Autowired
     private CirclePostCommentService commentService;
+    @Autowired
+    private CirclePostFollowService followService;
 
     @Operation(summary = "获取圈子帖子列表")
     @GetMapping
@@ -64,5 +67,12 @@ public class CirclePostBuyerController {
     public ResultMessage<Object> delete(@PathVariable List<String> ids) {
         circlePostService.deleteCirclePosts(ids);
         return ResultUtil.success(ResultCode.SUCCESS);
+    }
+
+    @Operation(summary = "店铺关注")
+    @PostMapping(value = "/{storeId}/follow")
+    public ResultMessage<Object> addStoreFollow(@PathVariable String storeId) {
+        followService.addStoreFollow(storeId);
+        return ResultUtil.success();
     }
 }
