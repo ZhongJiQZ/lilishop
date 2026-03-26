@@ -28,6 +28,7 @@ import cn.lili.modules.store.entity.dos.StoreDetail;
 import cn.lili.modules.store.entity.dto.*;
 import cn.lili.modules.store.entity.enums.StoreStatusEnum;
 import cn.lili.modules.store.entity.vos.StoreSearchParams;
+import cn.lili.modules.store.entity.vos.StoreTradeRankingVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
 import cn.lili.modules.store.mapper.StoreMapper;
 import cn.lili.modules.store.service.StoreDetailService;
@@ -429,6 +430,23 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             }
         }
         return goodsSkuService.getGoodsSkuByIdFromCache(skuIdList);
+    }
+
+    @Override
+    public IPage<StoreTradeRankingVO> getTradeRanking(PageVO page) {
+        LambdaQueryWrapper<StoreTradeRankingVO> wrapper = new LambdaQueryWrapper<>();
+        // 只查询正常营业的店铺
+        wrapper.eq(Store::getStoreDisable, StoreStatusEnum.OPEN.value());
+        IPage<StoreTradeRankingVO> resultPage = this.baseMapper.getStoreTradeRankingList(PageUtil.initPage(page), wrapper);
+
+        // 🔥 自动赋值排名序号（第几名）
+        int start = (page.getPageNumber() - 1) * page.getPageSize();
+        List<StoreTradeRankingVO> records = resultPage.getRecords();
+        for (int i = 0; i < records.size(); i++) {
+            records.get(i).setRank(start + i + 1);
+        }
+
+        return resultPage;
     }
 
     /**

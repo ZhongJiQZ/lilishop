@@ -1,5 +1,6 @@
 package cn.lili.modules.member.entity.dos;
 
+import cn.hutool.core.util.IdUtil;
 import cn.lili.common.enums.ClientTypeEnum;
 import cn.lili.common.security.sensitive.Sensitive;
 import cn.lili.common.security.sensitive.enums.SensitiveStrategy;
@@ -106,6 +107,24 @@ public class Member extends BaseEntity {
     @Schema(description = "平台币总数量")
     private Long totalCoin;
 
+    @Schema(description = "是否是VIP会员 0=普通用户 1=会员用户")
+    private Boolean isVip;
+
+    @Schema(description = "邀请码")
+    private String inviteCode;
+
+    @Schema(description = "邀请码状态 0=未填写 1=已填写")
+    private Boolean inviteStatus;
+
+    @Schema(description = "邀请人ID")
+    private String inviterId;
+
+    @Schema(description = "邀请人Code")
+    private String inviterCode;
+
+    @Schema(description = "邀请人名称")
+    private String inviterName;
+
 
     public Member(String username, String password, String mobile) {
         this.username = username;
@@ -120,6 +139,14 @@ public class Member extends BaseEntity {
         this.lastLoginDate = new Date();
         this.coin = 0L;
         this.totalCoin = 0L;
+        this.isVip = false;
+        this.inviteStatus = false;
+        // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
+        this.inviteCode = Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase();
+    }
+
+    public static void main(String[] args) {
+        System.out.println(Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase());
     }
 
     public Member(String username, String password, String face, String nickName, Integer sex, String mobile) {
@@ -136,5 +163,9 @@ public class Member extends BaseEntity {
         this.lastLoginDate = new Date();
         this.coin = 0L;
         this.totalCoin = 0L;
+        this.isVip = false;
+        this.inviteStatus = false;
+        // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
+        this.inviteCode = Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase();
     }
 }

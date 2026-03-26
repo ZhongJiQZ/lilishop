@@ -6,6 +6,7 @@ import cn.lili.modules.member.entity.dto.CollectionDTO;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.dto.*;
 import cn.lili.modules.store.entity.vos.StoreSearchParams;
+import cn.lili.modules.store.entity.vos.StoreTradeRankingVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -131,4 +132,11 @@ public interface StoreService extends IService<Store> {
      * @return
      */
     List<GoodsSku> getToMemberHistory(String memberId);
+
+    /**
+     * 店铺成交排行榜
+     * @param page 查询参数
+     * @return
+     */
+    IPage<StoreTradeRankingVO> getTradeRanking(PageVO page);
 }

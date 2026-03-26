@@ -1,15 +1,19 @@
 package cn.lili.event.impl;
 
 
-import cn.lili.event.*;
+import cn.lili.event.MemberRechargeEvent;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.entity.enums.CoinTypeEnum;
 import cn.lili.modules.member.service.MemberService;
+import cn.lili.modules.order.order.entity.enums.PayStatusEnum;
 import cn.lili.modules.order.order.service.OrderService;
 import cn.lili.modules.system.entity.dos.Setting;
 import cn.lili.modules.system.entity.dto.CoinSetting;
 import cn.lili.modules.system.entity.enums.SettingEnum;
 import cn.lili.modules.system.service.SettingService;
+import cn.lili.modules.wallet.entity.dos.Recharge;
+import cn.lili.modules.wallet.service.RechargeService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +38,11 @@ public class MemberCoinExecute implements MemberRechargeEvent
      */
     @Autowired
     private MemberService memberService;
+    /**
+     * 会员
+     */
+    @Autowired
+    private RechargeService rechargeService;
     /**
      * 订单
      */
@@ -149,9 +158,29 @@ public class MemberCoinExecute implements MemberRechargeEvent
 
     @Override
     public void memberRecharge(Member member) {
-        //获取平台币设置
-        CoinSetting coinSetting = getCoinSetting();
-        //赠送会员平台币
-        memberService.updateMemberCoin(coinSetting.getRegister().longValue(), CoinTypeEnum.INCREASE.name(), member.getId(), "会员充值，赠送平台币" + coinSetting.getRecharge() + "币");
+        //判断是否首次充值
+        if (isFirstPaidRecharge(member.getId())) {
+            //更新为VIP会员
+            member.setIsVip(true);
+            memberService.updateById(member);
+            //获取平台币设置
+            CoinSetting coinSetting = getCoinSetting();
+            //赠送50平台币
+            memberService.updateMemberCoin(coinSetting.getRegister().longValue(), CoinTypeEnum.INCREASE.name(), member.getId(), "会员首次充值，赠送平台币" + coinSetting.getRecharge() + "币");
+        }
+    }
+
+    /**
+     * 判断用户是否首次成功充值
+     * @param memberId 会员ID
+     * @return true=首次充值 false=非首次充值
+     */
+    private boolean isFirstPaidRecharge(String memberId) {
+        long paidCount = rechargeService.count(new LambdaQueryWrapper<Recharge>()
+                .eq(Recharge::getMemberId, memberId)
+                .eq(Recharge::getPayStatus, PayStatusEnum.PAID.name())
+        );
+        // 已支付订单数量 ≤ 1 代表首次充值（包含当前刚支付的这笔）
+        return paidCount <= 1;
     }
 }

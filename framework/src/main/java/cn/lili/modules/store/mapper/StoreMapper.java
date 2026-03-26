@@ -1,11 +1,14 @@
 package cn.lili.modules.store.mapper;
 
 import cn.lili.modules.store.entity.dos.Store;
+import cn.lili.modules.store.entity.vos.StoreTradeRankingVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -47,4 +50,21 @@ public interface StoreMapper extends BaseMapper<Store> {
     @Update("update li_store set collection_num = collection_num + #{num} where id = #{storeId}")
     void updateCollection(String storeId, Integer num);
 
+    /**
+     * 店铺成交排行榜
+     *
+     * @param page         分页
+     * @param queryWrapper 查询条件
+     * @return 店铺VO分页列表
+     */
+    @Select("SELECT s.id, s.store_name, s.store_logo, COUNT(o.id) AS order_count " +
+            "FROM li_store s " +
+            "LEFT JOIN li_order o ON s.id = o.store_id " +
+            "AND o.order_status = 'COMPLETE' " + // 只统计已完成订单
+            "AND o.pay_status = 'PAID' " +
+            "AND o.deliver_status = 'SIGN' " +
+            "${ew.customSqlSegment} " +
+            "GROUP BY s.id " +
+            "ORDER BY order_count DESC")
+    IPage<StoreTradeRankingVO> getStoreTradeRankingList(Page<Object> page, LambdaQueryWrapper<StoreTradeRankingVO> queryWrapper);
 }

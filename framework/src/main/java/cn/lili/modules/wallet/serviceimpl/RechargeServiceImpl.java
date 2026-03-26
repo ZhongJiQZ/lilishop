@@ -3,7 +3,9 @@ package cn.lili.modules.wallet.serviceimpl;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.common.enums.ResultCode;
+import cn.lili.common.event.TransactionCommitSendMQEvent;
 import cn.lili.common.exception.ServiceException;
+import cn.lili.common.properties.RocketmqCustomProperties;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.utils.SnowFlake;
@@ -18,11 +20,13 @@ import cn.lili.modules.wallet.mapper.RechargeMapper;
 import cn.lili.modules.wallet.service.MemberWalletService;
 import cn.lili.modules.wallet.service.RechargeService;
 import cn.lili.mybatis.util.PageUtil;
+import cn.lili.rocketmq.tags.MemberTagsEnum;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +48,15 @@ public class RechargeServiceImpl extends ServiceImpl<RechargeMapper, Recharge> i
     @Autowired
     @Lazy
     private MemberWalletService memberWalletService;
+
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
+
+    /**
+     * RocketMQ 配置
+     */
+    @Autowired
+    private RocketmqCustomProperties rocketmqCustomProperties;
 
     @Override
     public Recharge recharge(Double price) {
@@ -100,6 +113,9 @@ public class RechargeServiceImpl extends ServiceImpl<RechargeMapper, Recharge> i
             this.updateById(recharge);
             //增加预存款余额
             memberWalletService.increase(new MemberWalletUpdateDTO(recharge.getRechargeMoney(), recharge.getMemberId(), "会员余额充值，充值单号为：" + recharge.getRechargeSn(), DepositServiceTypeEnum.WALLET_RECHARGE.name()));
+            //发送会员充值信息
+            applicationEventPublisher.publishEvent(new TransactionCommitSendMQEvent("new member recharge", rocketmqCustomProperties.getMemberTopic(),
+                    MemberTagsEnum.MEMBER_RECHARGE.name(), recharge));
         }
     }
 

@@ -13,6 +13,7 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.common.properties.RocketmqCustomProperties;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
+import cn.lili.common.security.enums.SecurityEnum;
 import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.security.token.Token;
 import cn.lili.common.sensitive.SensitiveWordsFilter;
@@ -42,12 +43,14 @@ import cn.lili.modules.store.service.StoreService;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.MemberTagsEnum;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +59,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Date;
 import java.util.List;
@@ -246,6 +251,33 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         return this.getOne(queryWrapper, false);
     }
 
+    /**
+     * 添加邀请人信息
+     */
+    private void addInviter(Member member) {
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        String inviterCode = request.getHeader(SecurityEnum.INVITER_CODE.getValue());
+        //邀请码必须填写
+        if (StringUtils.isEmpty(inviterCode)) {
+            throw new ServiceException(ResultCode.INVITE_CODE_NOT_EXIST);
+        }
+        //邀请码必须是12位
+        if(inviterCode.length() != 12){
+            throw new ServiceException(ResultCode.INVITE_CODE_INVALID);
+        }
+        //查询数据库判断用户是否存在
+        Member inviter = this.getOne(new LambdaQueryWrapper<Member>()
+                .eq(Member::getInviteCode, inviterCode)
+        );
+        if(inviter == null) {
+            throw new ServiceException(ResultCode.INVITER_NOT_EXIST);
+        }
+        member.setInviterId(inviter.getId());
+        member.setInviteStatus(true);
+        member.setInviterCode(inviterCode);
+        member.setInviterName(inviter.getNickName());
+    }
+
     @Override
     @Transactional
     public Member autoRegister(ConnectAuthUser authUser) {
@@ -261,6 +293,8 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
             Member member = new Member(authUser.getUsername(), UuidUtils.getUUID(), authUser.getAvatar(), authUser.getNickname(),
                     authUser.getGender() != null ? Convert.toInt(authUser.getGender().getCode()) : 0, authUser.getPhone());
             member.setPassword(DEFAULT_PASSWORD);
+            // 添加邀请人信息
+            addInviter(member);
             // 发送会员注册信息
             registerHandler(member);
 

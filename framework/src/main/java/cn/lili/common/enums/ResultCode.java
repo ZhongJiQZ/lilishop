@@ -535,6 +535,16 @@ public enum ResultCode {
     CIRCLE_COMMENT_UPDATE_ERROR(80517, "编辑评论失败，无权限或状态异常"),
 
     /**
+     * 邀请码
+     */
+    INVITE_CODE_NOT_EXIST(20050, "邀请码不存在"),
+    INVITE_CODE_INVALID(20051, "邀请码无效"),
+    INVITER_NOT_EXIST(20052, "邀请人不存在"),
+    INVITE_CODE_REPEAT(20053, "邀请码已存在"),
+    INVITE_CODE_BIND_SELF(20054, "不能绑定自己的邀请码"),
+    INVITE_CODE_ALREADY_USED(20055, "邀请码已被使用"),
+
+    /**
      * 其他
      */
     CUSTOM_WORDS_EXIST_ERROR(90000, "当前自定义分词已存在！"),
