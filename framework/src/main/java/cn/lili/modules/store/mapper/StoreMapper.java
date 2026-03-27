@@ -66,5 +66,5 @@ public interface StoreMapper extends BaseMapper<Store> {
             "${ew.customSqlSegment} " +
             "GROUP BY s.id " +
             "ORDER BY order_count DESC")
-    IPage<StoreTradeRankingVO> getStoreTradeRankingList(Page<Object> page, LambdaQueryWrapper<StoreTradeRankingVO> queryWrapper);
+    IPage<StoreTradeRankingVO> getStoreTradeRankingList(Page<Object> page, @Param(Constants.WRAPPER) LambdaQueryWrapper<StoreTradeRankingVO> queryWrapper);
 }

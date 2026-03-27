@@ -143,6 +143,7 @@ public enum ResultCode {
     USER_CONNECT_BANDING_ERROR(20023, "当前联合登陆方式，已绑定其他账号，需进行解绑操作"),
     USER_CONNECT_NOT_EXIST_ERROR(20024, "暂无联合登陆信息，无法实现一键注册功能，请点击第三方登录进行授权"),
     USER_POINTS_ERROR(20024, "用户积分不足"),
+    USER_COINS_INSUFFICIENT_BALANCE(20024, "用户平台币余额不足"),
     CLERK_SUPPER(20025, "店主无法操作"),
     CLERK_SAVE_ERROR(20026, "店员保存失败"),
     CLERK_NOT_FOUND_ERROR(20027, "店员不存在"),
@@ -543,6 +544,11 @@ public enum ResultCode {
     INVITE_CODE_REPEAT(20053, "邀请码已存在"),
     INVITE_CODE_BIND_SELF(20054, "不能绑定自己的邀请码"),
     INVITE_CODE_ALREADY_USED(20055, "邀请码已被使用"),
+
+    /**
+     * 聊天礼物模块 - 错误码从 80600 开始
+     */
+    CHAT_GIFT_NOT_EXIST(80600, "礼物不存在或已删除"),
 
     /**
      * 其他

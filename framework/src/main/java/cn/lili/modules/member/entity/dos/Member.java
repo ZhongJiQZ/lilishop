@@ -16,6 +16,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 /**
@@ -101,11 +102,11 @@ public class Member extends BaseEntity {
 
     @Min(message = "必须为数字", value = 0)
     @Schema(description = "平台币数量")
-    private Long coin;
+    private BigDecimal coin;
 
     @Min(message = "必须为数字", value = 0)
     @Schema(description = "平台币总数量")
-    private Long totalCoin;
+    private BigDecimal totalCoin;
 
     @Schema(description = "是否是VIP会员 0=普通用户 1=会员用户")
     private Boolean isVip;
@@ -137,8 +138,8 @@ public class Member extends BaseEntity {
         this.point = 0L;
         this.totalPoint = 0L;
         this.lastLoginDate = new Date();
-        this.coin = 0L;
-        this.totalCoin = 0L;
+        this.coin = new BigDecimal("0");
+        this.totalCoin = new BigDecimal("0");
         this.isVip = false;
         this.inviteStatus = false;
         // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
@@ -161,8 +162,8 @@ public class Member extends BaseEntity {
         this.point = 0L;
         this.totalPoint = 0L;
         this.lastLoginDate = new Date();
-        this.coin = 0L;
-        this.totalCoin = 0L;
+        this.coin = new BigDecimal("0");
+        this.totalCoin = new BigDecimal("0");
         this.isVip = false;
         this.inviteStatus = false;
         // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）

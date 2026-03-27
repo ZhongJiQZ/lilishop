@@ -3,6 +3,8 @@ package cn.lili.modules.member.entity.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 /**
  * 会员平台币
  *
@@ -13,7 +15,7 @@ import lombok.Data;
 public class MemberCoinMessage {
 
     @Schema(description = "平台币")
-    private Long coin;
+    private BigDecimal coin;
 
     @Schema(description = "是否增加平台币")
     private String type;

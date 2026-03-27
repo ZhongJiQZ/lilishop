@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,7 +19,7 @@ public class CoinSetting implements Serializable {
 
     private static final long serialVersionUID = -4261856614779031745L;
     @Schema(description = "充值赠送多少平台币")
-    private Integer recharge;
+    private BigDecimal recharge;
 
     @Schema(description = "注册")
     private Integer register;
@@ -38,9 +39,9 @@ public class CoinSetting implements Serializable {
     @Schema(description = "平台币具体设置")
     private List<CoinSettingItem> coinSettingItems = new ArrayList<>();
 
-    public Integer getRecharge() {
-        if (recharge == null || recharge < 0) {
-            return 0;
+    public BigDecimal getRecharge() {
+        if (recharge == null || recharge.compareTo(BigDecimal.ZERO) < 0) {
+            return BigDecimal.ZERO;
         }
         return recharge;
     }

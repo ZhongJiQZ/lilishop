@@ -62,6 +62,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -882,23 +883,23 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
     @Override
     @CoinLogPoint
     @Transactional(rollbackFor = Exception.class)
-    public Boolean updateMemberCoin(long coin, String type, String memberId, String content) {
+    public Boolean updateMemberCoin(BigDecimal coin, String type, String memberId, String content) {
         //获取当前会员信息
         Member member = this.getById(memberId);
         if (member != null) {
             //平台币变动后的会员平台币
-            long currentCoin;
+            BigDecimal currentCoin;
             //会员总获得平台币
-            long totalCoin = member.getTotalCoin();
+            BigDecimal totalCoin = member.getTotalCoin();
             //如果增加平台币
             if (type.equals(CoinTypeEnum.INCREASE.name())) {
-                currentCoin = member.getCoin() + coin;
+                currentCoin = member.getCoin().add(coin);
                 //如果是增加平台币 需要增加总获得平台币
-                totalCoin = totalCoin + coin;
+                totalCoin = totalCoin.add(coin);
             }
             //否则扣除平台币
             else {
-                currentCoin = member.getCoin() - coin < 0 ? 0 : member.getCoin() - coin;
+                currentCoin = member.getCoin().subtract(coin).compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : member.getCoin().subtract(coin);
             }
             member.setCoin(currentCoin);
             member.setTotalCoin(totalCoin);

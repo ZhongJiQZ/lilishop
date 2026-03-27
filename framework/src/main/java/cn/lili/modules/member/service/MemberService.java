@@ -16,6 +16,7 @@ import cn.lili.modules.member.entity.vo.QRLoginResultVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -329,5 +330,5 @@ public interface MemberService extends IService<Member> {
      * @param content  变动日志
      * @return 操作结果
      */
-    Boolean updateMemberCoin(long coin, String type, String memberId, String content);
+    Boolean updateMemberCoin(BigDecimal coin, String type, String memberId, String content);
 }

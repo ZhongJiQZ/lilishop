@@ -12,6 +12,8 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+
 /**
  * 平台币操作切面
  *
@@ -35,9 +37,9 @@ public class CoinLogInterceptor {
         Object[] obj = pjp.getArgs();
         try {
             //变动平台币
-            Long coin = 0L;
+            BigDecimal coin = BigDecimal.ZERO;
             if (obj[0] != null) {
-                coin = Long.valueOf(obj[0].toString());
+                coin = new BigDecimal(obj[0].toString());
             }
             //变动类型
             String type = CoinTypeEnum.INCREASE.name();
@@ -50,7 +52,7 @@ public class CoinLogInterceptor {
                 memberId = obj[2].toString();
             }
             // 变动平台币为0，则直接返回
-            if (coin == 0) {
+            if (coin.compareTo(BigDecimal.ZERO) == 0) {
                 return;
             }
 
@@ -64,9 +66,9 @@ public class CoinLogInterceptor {
 
                 memberCoinsHistory.setVariableCoin(coin);
                 if (type.equals(CoinTypeEnum.INCREASE.name())) {
-                    memberCoinsHistory.setBeforeCoin(member.getCoin() - coin);
+                    memberCoinsHistory.setBeforeCoin(member.getCoin().subtract(coin));
                 } else {
-                    memberCoinsHistory.setBeforeCoin(member.getCoin() + coin);
+                    memberCoinsHistory.setBeforeCoin(member.getCoin().add(coin));
                 }
 
                 memberCoinsHistory.setCoin(member.getCoin());

@@ -143,6 +143,51 @@ ALTER TABLE li_member
     ADD COLUMN invite_code varchar(255) DEFAULT NULL COMMENT '【邀请码】每个会员唯一',
     ADD COLUMN invite_status bit(1) DEFAULT b'0' COMMENT '邀请码状态 0=未填写 1=已填写',
     ADD COLUMN inviter_id bigint DEFAULT NULL COMMENT '邀请人ID',
+    ADD COLUMN inviter_code varchar(255) NULL COMMENT '邀请人Code' AFTER `inviter_id`;
     ADD COLUMN inviter_name varchar(255) DEFAULT NULL COMMENT '邀请人名称';
 
 ALTER TABLE li_member ADD UNIQUE INDEX uk_invite_code (invite_code);
+
+--- 新增表
+
+CREATE TABLE `li_im_chat_gift` (
+    `id` varchar(64) NOT NULL,
+    `gift_name` varchar(100) NOT NULL COMMENT '礼物名称',
+    `gift_image` varchar(500) NOT NULL COMMENT '礼物图标',
+    `coin_price` decimal(10, 2) NOT NULL DEFAULT 0 COMMENT '价格（平台币）',
+    `sort` int DEFAULT 0 COMMENT '排序',
+    `status` tinyint(1) DEFAULT 1 COMMENT '状态 0=禁用 1=启用',
+    `create_time` datetime DEFAULT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天-礼物配置表';
+
+CREATE TABLE `li_im_chat_reward` (
+    `id` varchar(64) NOT NULL COMMENT '主键ID',
+    `gift_id` varchar(64) NOT NULL COMMENT '礼物ID',
+    `gift_name` varchar(100) NOT NULL COMMENT '礼物名称',
+    `gift_image` varchar(500) NOT NULL COMMENT '礼物图片',
+    `coin_price` decimal(10, 2) NOT NULL COMMENT '礼物单价（平台币）',
+    `num` int NOT NULL DEFAULT 1 COMMENT '礼物数量',
+    `total_coin` decimal(10, 2) NOT NULL COMMENT '本次打赏总消耗平台币',
+    `from_member_id` varchar(64) NOT NULL COMMENT '打赏人ID（用户）',
+    `from_member_name` varchar(255) DEFAULT NULL COMMENT '打赏人名称',
+    `from_member_avatar` varchar(500) DEFAULT NULL COMMENT '打赏人头像',
+    `to_member_id` varchar(64) NOT NULL COMMENT '被打赏人ID（试穿员）',
+    `to_member_name` varchar(255) DEFAULT NULL COMMENT '被打赏人名称',
+    `to_member_avatar` varchar(500) DEFAULT NULL COMMENT '被打赏人头像',
+    `create_time` datetime DEFAULT NULL COMMENT '打赏时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_from_member_id` (`from_member_id`),
+    KEY `idx_to_member_id` (`to_member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天-打赏记录表';
+
+CREATE TABLE `li_im_member_income` (
+    `id` varchar(64) NOT NULL COMMENT '主键ID',
+    `member_id` varchar(64) NOT NULL COMMENT '试穿员会员ID',
+    `member_name` varchar(255) DEFAULT NULL COMMENT '试穿员名称',
+    `total_income` decimal(10, 2) DEFAULT 0 COMMENT '总收益（平台币）',
+    `today_income` decimal(10, 2) DEFAULT 0 COMMENT '今日收益（平台币）',
+    `update_time` datetime DEFAULT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_member_id` (`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员-试穿员收益表';

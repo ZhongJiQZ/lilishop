@@ -166,7 +166,7 @@ public class MemberCoinExecute implements MemberRechargeEvent
             //获取平台币设置
             CoinSetting coinSetting = getCoinSetting();
             //赠送50平台币
-            memberService.updateMemberCoin(coinSetting.getRegister().longValue(), CoinTypeEnum.INCREASE.name(), member.getId(), "会员首次充值，赠送平台币" + coinSetting.getRecharge() + "币");
+            memberService.updateMemberCoin(coinSetting.getRecharge(), CoinTypeEnum.INCREASE.name(), member.getId(), "会员首次充值，赠送平台币" + coinSetting.getRecharge() + "币");
         }
     }
 

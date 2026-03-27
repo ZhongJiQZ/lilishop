@@ -15,6 +15,7 @@ import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.format.annotation.DateTimeFormat;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 /**
@@ -52,13 +53,13 @@ public class MemberCoinsHistory extends BaseIdEntity {
     private String memberName;
 
     @Schema(description = "当前平台币")
-    private Long coin;
+    private BigDecimal coin;
 
     @Schema(description = "消费之前平台币")
-    private Long beforeCoin;
+    private BigDecimal beforeCoin;
 
     @Schema(description = "变动平台币")
-    private Long variableCoin;
+    private BigDecimal variableCoin;
 
     @Schema(description = "content")
     private String content;
