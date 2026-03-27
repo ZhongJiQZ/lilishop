@@ -659,6 +659,9 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         GoodsOperationDTO goodsOperationDTO = this.buildMinimalCopyDTO(templateGoods, templateGoodsVO, targetStoreId);
         Goods goods = new Goods(goodsOperationDTO);
         this.checkGoodsByStore(goods, targetStoreId);
+        // 模板复制固定免审核并直接上架
+        goods.setAuthFlag(GoodsAuthEnum.PASS.name());
+        goods.setMarketEnable(GoodsStatusEnum.UPPER.name());
         if (goodsOperationDTO.getGoodsGalleryList().size() > 0) {
             this.setGoodsGalleryParam(goodsOperationDTO.getGoodsGalleryList().get(0), goods);
         }
@@ -685,7 +688,8 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         dto.setMobileIntro(templateGoods.getMobileIntro());
         dto.setGoodsVideo(templateGoods.getGoodsVideo());
         dto.setRecommend(Boolean.TRUE.equals(templateGoods.getRecommend()));
-        dto.setRelease(GoodsStatusEnum.UPPER.name().equals(templateGoods.getMarketEnable()));
+        // 复制后统一直接上架，不继承模板商品上下架状态
+        dto.setRelease(Boolean.TRUE);
         dto.setStoreCategoryPath(null);
         dto.setGoodsParamsDTOList(Collections.emptyList());
 
