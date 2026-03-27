@@ -1,0 +1,82 @@
+# 工作流名称
+name: 宝塔多项目自动部署(JDK21·自动上传脚本·目录变量)
+
+# 触发部署条件
+on:
+  push:
+    branches: [ main ]       # 推送到main分支自动部署
+  workflow_dispatch:         # 支持GitHub页面手动触发
+
+# 定义全局变量（只改这里，全流程生效）
+env:
+  # 🔥 服务器统一部署目录（提取为变量，修改一次全文件同步）
+  REMOTE_DEPLOY_DIR: "/www/wwwroot/java/"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest  # 运行环境：GitHub Ubuntu虚拟机
+
+    steps:
+      # ==============================================
+      # 步骤1：拉取项目代码
+      # ==============================================
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # ==============================================
+      # 步骤2：配置JDK21（与服务器JDK版本保持一致）
+      # ==============================================
+      - name: 设置JDK 21环境
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven        # 开启Maven缓存，加速构建
+
+      # ==============================================
+      # 步骤3：Maven打包所有模块（跳过测试）
+      # ==============================================
+      - name: 构建所有模块Jar包
+        run: mvn clean package -DskipTests
+
+      # ==============================================
+      # 步骤4：上传所有Jar到服务器（使用全局变量目录）
+      # ==============================================
+      - name: 上传Jar文件到服务器
+        uses: easingthemes/ssh-deploy@v5
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SOURCE: "*/target/*.jar"              # 匹配所有模块target下的jar
+          REMOTE_HOST: ${{ secrets.SERVER_HOST }}
+          REMOTE_USER: ${{ secrets.SERVER_USER }}
+          REMOTE_PORT: ${{ secrets.SERVER_PORT }}
+          TARGET: ${{ env.REMOTE_DEPLOY_DIR }}   # 🔥 使用全局变量目录
+
+      # ==============================================
+      # 步骤5：自动上传restart.sh到服务器（变量目录）
+      # ==============================================
+      - name: 上传部署脚本restart.sh
+        uses: easingthemes/ssh-deploy@v5
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SOURCE: "restart.sh"                   # 项目根目录的脚本
+          REMOTE_HOST: ${{ secrets.SERVER_HOST }}
+          REMOTE_USER: ${{ secrets.SERVER_USER }}
+          REMOTE_PORT: ${{ secrets.SERVER_PORT }}
+          TARGET: ${{ env.REMOTE_DEPLOY_DIR }}    # 🔥 使用全局变量目录
+
+      # ==============================================
+      # 步骤6：授权脚本并执行部署
+      # ==============================================
+      - name: 执行服务器自动部署脚本
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            # 授权执行权限
+            chmod +x ${{ env.REMOTE_DEPLOY_DIR }}restart.sh
+            # 运行部署脚本（杀进程→启动新Jar）
+            ${{ env.REMOTE_DEPLOY_DIR }}restart.sh
