@@ -40,10 +40,22 @@ jobs:
         run: mvn clean package -DskipTests
 
       # ==============================================
-      # 步骤4：上传所有Jar到服务器（使用全局变量目录）
+      # 步骤4：自动创建服务器目录（防止目录不存在导致上传失败）
+      # ==============================================
+      - name: 创建服务器目录
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{ secrets.SERVER_HOST }}
+            username: ${{ secrets.SERVER_USER }}
+            key: ${{ secrets.SERVER_SSH_KEY }}
+            port: ${{ secrets.SERVER_PORT }}
+            script: mkdir -p ${{ env.DEPLOY_DIR }}
+
+      # ==============================================
+      # 步骤5：上传所有Jar到服务器（使用全局变量目录）
       # ==============================================
       - name: 上传Jar文件到服务器
-        uses: easingthemes/ssh-deploy@v2
+        uses: appleboy/scp-action@master
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SOURCE: "*/target/*.jar"              # 匹配所有模块target下的jar
@@ -51,12 +63,13 @@ jobs:
           REMOTE_USER: ${{ secrets.SERVER_USER }}
           REMOTE_PORT: ${{ secrets.SERVER_PORT }}
           TARGET: ${{ env.REMOTE_DEPLOY_DIR }}   # 🔥 使用全局变量目录
+          strip_components: 2                    # 自动去掉多余目录，直接上传jar
 
       # ==============================================
-      # 步骤5：自动上传restart.sh到服务器（变量目录）
+      # 步骤6：自动上传restart.sh到服务器（变量目录）
       # ==============================================
       - name: 上传部署脚本restart.sh
-        uses: easingthemes/ssh-deploy@v2
+        uses: appleboy/scp-action@master
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SOURCE: "restart.sh"                   # 项目根目录的脚本
@@ -66,7 +79,7 @@ jobs:
           TARGET: ${{ env.REMOTE_DEPLOY_DIR }}    # 🔥 使用全局变量目录
 
       # ==============================================
-      # 步骤6：授权脚本并执行部署
+      # 步骤7：授权脚本并执行部署
       # ==============================================
       - name: 执行服务器自动部署脚本
         uses: appleboy/ssh-action@master
