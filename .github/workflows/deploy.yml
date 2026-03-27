@@ -43,13 +43,13 @@ jobs:
       # 步骤4：自动创建服务器目录（防止目录不存在导致上传失败）
       # ==============================================
       - name: 创建服务器目录
-          uses: appleboy/ssh-action@master
-          with:
-            host: ${{ secrets.SERVER_HOST }}
-            username: ${{ secrets.SERVER_USER }}
-            key: ${{ secrets.SERVER_SSH_KEY }}
-            port: ${{ secrets.SERVER_PORT }}
-            script: mkdir -p ${{ env.DEPLOY_DIR }}
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: mkdir -p ${{ env.DEPLOY_DIR }}
 
       # ==============================================
       # 步骤5：上传所有Jar到服务器（使用全局变量目录）
