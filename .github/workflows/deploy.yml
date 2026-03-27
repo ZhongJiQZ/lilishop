@@ -43,7 +43,7 @@ jobs:
       # 步骤4：上传所有Jar到服务器（使用全局变量目录）
       # ==============================================
       - name: 上传Jar文件到服务器
-        uses: easingthemes/ssh-deploy@v5
+        uses: easingthemes/ssh-deploy@v2
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SOURCE: "*/target/*.jar"              # 匹配所有模块target下的jar
@@ -56,7 +56,7 @@ jobs:
       # 步骤5：自动上传restart.sh到服务器（变量目录）
       # ==============================================
       - name: 上传部署脚本restart.sh
-        uses: easingthemes/ssh-deploy@v5
+        uses: easingthemes/ssh-deploy@v2
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SOURCE: "restart.sh"                   # 项目根目录的脚本
