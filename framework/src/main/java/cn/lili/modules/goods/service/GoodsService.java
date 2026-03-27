@@ -239,4 +239,14 @@ public interface GoodsService extends IService<Goods> {
      * @return 操作结果
      */
     Boolean underGoodsByStore(List<String> goodsIds, String storeId, String underReason);
+
+    /**
+     * 指定店铺上架商品
+     *
+     * @param goodsIds      商品ID集合
+     * @param storeId       店铺ID
+     * @param operateReason 操作原因
+     * @return 操作结果
+     */
+    Boolean upperGoodsByStore(List<String> goodsIds, String storeId, String operateReason);
 }

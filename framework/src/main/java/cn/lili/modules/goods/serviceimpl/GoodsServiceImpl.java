@@ -650,13 +650,13 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (CharSequenceUtil.isEmpty(targetStoreId)) {
             throw new ServiceException(ResultCode.STORE_NOT_EXIST);
         }
-        String templateStoreId = this.getTemplateStoreId();
         Goods templateGoods = this.checkExist(templateGoodsId);
+        String templateStoreId = this.getTemplateStoreId();
         if (!templateStoreId.equals(templateGoods.getStoreId())) {
             throw new ServiceException("仅允许复制模板店铺商品");
         }
         GoodsVO templateGoodsVO = this.getGoodsVO(templateGoodsId);
-        GoodsOperationDTO goodsOperationDTO = this.buildMinimalCopyDTO(templateGoods, templateGoodsVO, templateStoreId, targetStoreId);
+        GoodsOperationDTO goodsOperationDTO = this.buildMinimalCopyDTO(templateGoods, templateGoodsVO, targetStoreId);
         Goods goods = new Goods(goodsOperationDTO);
         this.checkGoodsByStore(goods, targetStoreId);
         if (goodsOperationDTO.getGoodsGalleryList().size() > 0) {
@@ -670,7 +670,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         this.generateEs(goods);
     }
 
-    private GoodsOperationDTO buildMinimalCopyDTO(Goods templateGoods, GoodsVO templateGoodsVO, String templateStoreId, String targetStoreId) {
+    private GoodsOperationDTO buildMinimalCopyDTO(Goods templateGoods, GoodsVO templateGoodsVO, String targetStoreId) {
         GoodsOperationDTO dto = new GoodsOperationDTO();
         dto.setGoodsName(templateGoods.getGoodsName());
         dto.setGoodsType(templateGoods.getGoodsType());
@@ -690,7 +690,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         dto.setGoodsParamsDTOList(Collections.emptyList());
 
         if (GoodsTypeEnum.PHYSICAL_GOODS.name().equals(templateGoods.getGoodsType())) {
-            dto.setTemplateId(this.copyFreightTemplateToCurrentStore(templateGoods.getTemplateId(), templateStoreId, targetStoreId));
+            dto.setTemplateId(this.copyFreightTemplateToCurrentStore(templateGoods.getTemplateId(), targetStoreId));
         } else {
             dto.setTemplateId("0");
         }
@@ -731,13 +731,13 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         return dto;
     }
 
-    private String copyFreightTemplateToCurrentStore(String sourceTemplateId, String templateStoreId, String targetStoreId) {
+    private String copyFreightTemplateToCurrentStore(String sourceTemplateId, String targetStoreId) {
         if (CharSequenceUtil.isEmpty(sourceTemplateId) || "0".equals(sourceTemplateId)) {
             throw new ServiceException("模板商品缺少有效物流模板，无法复制");
         }
         FreightTemplateVO sourceTemplate = freightTemplateService.getFreightTemplate(sourceTemplateId);
-        if (sourceTemplate == null || !templateStoreId.equals(sourceTemplate.getStoreId())) {
-            throw new ServiceException("模板店铺物流模板不存在或不匹配");
+        if (sourceTemplate == null) {
+            throw new ServiceException("物流模板不存在");
         }
         String targetTemplateName = sourceTemplate.getName();
         if (CharSequenceUtil.isEmpty(targetTemplateName)) {
@@ -770,7 +770,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
             }
             newTemplate.setFreightTemplateChildList(children);
         }
-        freightTemplateService.addFreightTemplate(newTemplate);
+        freightTemplateService.addFreightTemplateByStoreId(newTemplate, targetStoreId);
 
         List<FreightTemplateVO> refreshTemplates = freightTemplateService.getFreightTemplateList(targetStoreId);
         return refreshTemplates.stream()
@@ -783,14 +783,24 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean underGoodsByStore(List<String> goodsIds, String storeId, String underReason) {
+        return this.updateGoodsMarketAbleByStore(goodsIds, storeId, GoodsStatusEnum.DOWN, underReason);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean upperGoodsByStore(List<String> goodsIds, String storeId, String operateReason) {
+        return this.updateGoodsMarketAbleByStore(goodsIds, storeId, GoodsStatusEnum.UPPER, operateReason);
+    }
+
+    private Boolean updateGoodsMarketAbleByStore(List<String> goodsIds, String storeId, GoodsStatusEnum goodsStatusEnum, String operateReason) {
         if (CollUtil.isEmpty(goodsIds)) {
             return true;
         }
         LambdaUpdateWrapper<Goods> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(Goods::getStoreId, storeId);
         updateWrapper.in(Goods::getId, goodsIds);
-        updateWrapper.set(Goods::getMarketEnable, GoodsStatusEnum.DOWN.name());
-        updateWrapper.set(Goods::getUnderMessage, underReason);
+        updateWrapper.set(Goods::getMarketEnable, goodsStatusEnum.name());
+        updateWrapper.set(Goods::getUnderMessage, operateReason);
         boolean result = this.update(updateWrapper);
 
         LambdaQueryWrapper<Goods> queryWrapper = new LambdaQueryWrapper<>();
@@ -798,7 +808,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         queryWrapper.in(Goods::getId, goodsIds);
         List<Goods> goodsList = this.list(queryWrapper);
         List<String> scopedGoodsIds = goodsList.stream().map(Goods::getId).collect(Collectors.toList());
-        this.updateGoodsStatus(scopedGoodsIds, GoodsStatusEnum.DOWN, goodsList);
+        this.updateGoodsStatus(scopedGoodsIds, goodsStatusEnum, goodsList);
         return result;
     }
 

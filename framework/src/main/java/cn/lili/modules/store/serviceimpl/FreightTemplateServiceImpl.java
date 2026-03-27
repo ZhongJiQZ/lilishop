@@ -100,29 +100,28 @@ public class FreightTemplateServiceImpl extends ServiceImpl<FreightTemplateMappe
 
     @Override
     public FreightTemplateVO addFreightTemplate(FreightTemplateVO freightTemplateVO) {
-        //获取当前登录商家账号
         AuthUser tokenUser = UserContext.getCurrentUser();
+        if (tokenUser == null || tokenUser.getStoreId() == null) {
+            throw new ServiceException(ResultCode.STORE_NOT_LOGIN_ERROR);
+        }
+        return this.addFreightTemplateByStoreId(freightTemplateVO, tokenUser.getStoreId());
+    }
+
+    @Override
+    public FreightTemplateVO addFreightTemplateByStoreId(FreightTemplateVO freightTemplateVO, String storeId) {
         FreightTemplate freightTemplate = new FreightTemplate();
-        //设置店铺ID
-        freightTemplateVO.setStoreId(tokenUser.getStoreId());
-        //复制属性
+        freightTemplateVO.setStoreId(storeId);
         BeanUtils.copyProperties(freightTemplateVO, freightTemplate);
-        //添加运费模板
         this.save(freightTemplate);
-        //给子模板赋父模板的id
         List<FreightTemplateChild> list = new ArrayList<>();
-        //如果子运费模板不为空则进行新增
         if (freightTemplateVO.getFreightTemplateChildList() != null) {
             for (FreightTemplateChild freightTemplateChild : freightTemplateVO.getFreightTemplateChildList()) {
                 freightTemplateChild.setFreightTemplateId(freightTemplate.getId());
                 list.add(freightTemplateChild);
             }
-            //添加运费模板子内容
             freightTemplateChildService.addFreightTemplateChild(list);
         }
-
-        //更新缓存
-        cache.remove(CachePrefix.SHIP_TEMPLATE.getPrefix() + tokenUser.getStoreId());
+        cache.remove(CachePrefix.SHIP_TEMPLATE.getPrefix() + storeId);
         return freightTemplateVO;
     }
 

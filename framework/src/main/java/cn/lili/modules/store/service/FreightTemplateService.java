@@ -55,6 +55,15 @@ public interface FreightTemplateService extends IService<FreightTemplate> {
     FreightTemplateVO addFreightTemplate(FreightTemplateVO freightTemplateVO);
 
     /**
+     * 按指定店铺新增运费模板
+     *
+     * @param freightTemplateVO 运费模板
+     * @param storeId           店铺ID
+     * @return 运费模板
+     */
+    FreightTemplateVO addFreightTemplateByStoreId(FreightTemplateVO freightTemplateVO, String storeId);
+
+    /**
      * 修改商家运费模板
      *
      * @param freightTemplateVO 运费模板
