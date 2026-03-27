@@ -7,11 +7,6 @@ on:
     branches: [ main ]       # 推送到main分支自动部署
   workflow_dispatch:         # 支持GitHub页面手动触发
 
-# 定义全局变量（只改这里，全流程生效）
-env:
-  # 🔥 服务器统一部署目录（提取为变量，修改一次全文件同步）
-  REMOTE_DEPLOY_DIR: "/www/wwwroot/java/"
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest  # 运行环境：GitHub Ubuntu虚拟机
@@ -62,8 +57,8 @@ jobs:
           REMOTE_HOST: ${{ secrets.SERVER_HOST }}
           REMOTE_USER: ${{ secrets.SERVER_USER }}
           REMOTE_PORT: ${{ secrets.SERVER_PORT }}
-          TARGET: ${{ env.REMOTE_DEPLOY_DIR }}   # 🔥 使用全局变量目录
-          strip_components: 2                    # 自动去掉多余目录，直接上传jar
+          TARGET: "/www/wwwroot/java/"   # 🔥 使用全局变量目录
+          strip_components: 2            # 自动去掉多余目录，直接上传jar
 
       # ==============================================
       # 步骤6：自动上传restart.sh到服务器（变量目录）
@@ -76,7 +71,7 @@ jobs:
           REMOTE_HOST: ${{ secrets.SERVER_HOST }}
           REMOTE_USER: ${{ secrets.SERVER_USER }}
           REMOTE_PORT: ${{ secrets.SERVER_PORT }}
-          TARGET: ${{ env.REMOTE_DEPLOY_DIR }}    # 🔥 使用全局变量目录
+          TARGET: "/www/wwwroot/java/"    # 🔥 使用全局变量目录
 
       # ==============================================
       # 步骤7：授权脚本并执行部署
@@ -90,6 +85,6 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           script: |
             # 授权执行权限
-            chmod +x ${{ env.REMOTE_DEPLOY_DIR }}restart.sh
+            chmod +x /www/wwwroot/java/restart.sh
             # 运行部署脚本（杀进程→启动新Jar）
-            ${{ env.REMOTE_DEPLOY_DIR }}restart.sh
+            /www/wwwroot/java/restart.sh
