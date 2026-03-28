@@ -293,7 +293,7 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
 //            String username = UuidUtils.getUUID();
             Member member = new Member(authUser.getUsername(), UuidUtils.getUUID(), authUser.getAvatar(), authUser.getNickname(),
                     authUser.getGender() != null ? Convert.toInt(authUser.getGender().getCode()) : 0, authUser.getPhone());
-            member.setPassword(DEFAULT_PASSWORD);
+            member.setPassword(new BCryptPasswordEncoder().encode(DEFAULT_PASSWORD));
             // 添加邀请人信息
             addInviter(member);
             // 发送会员注册信息
