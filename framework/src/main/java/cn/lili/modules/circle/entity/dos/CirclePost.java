@@ -8,6 +8,7 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.mybatis.BaseEntity;
 import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
@@ -56,6 +57,10 @@ public class CirclePost extends BaseEntity {
     @Schema(description = "店铺ID")
 //    @NotNull(message = "店铺ID不能为空")
     private String storeId;
+
+    @TableField(exist = false)
+    @Schema(description = "店铺名称")
+    private String storeName;
 
     @Schema(description = "发帖人ID")
 //    @NotNull(message = "发帖人不能为空")

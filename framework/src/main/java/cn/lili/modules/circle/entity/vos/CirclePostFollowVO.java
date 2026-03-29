@@ -14,10 +14,10 @@ public class CirclePostFollowVO {
 
     private static final long serialVersionUID = 6377623919990713567L;
 
-    @Schema(description = "会员头像")
-    private String face;
+    @Schema(description = "店铺logo")
+    private String storeLogo;
 
-    @Schema(description = "评论人")
-    private String nickName;
+    @Schema(description = "店铺名称")
+    private String storeName;
 
 }

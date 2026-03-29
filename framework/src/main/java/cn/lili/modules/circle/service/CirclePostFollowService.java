@@ -1,7 +1,9 @@
 package cn.lili.modules.circle.service;
 
 import cn.lili.modules.circle.entity.dos.CirclePostFollow;
+import cn.lili.modules.circle.entity.dto.CirclePostFollowSearchParams;
 import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -29,4 +31,6 @@ public interface CirclePostFollowService extends IService<CirclePostFollow> {
     void addStoreFollow(String storeId);
 
     void unfollowStore(String storeId);
+
+    IPage<CirclePostFollowVO> queryByParams(CirclePostFollowSearchParams followSearchParams);
 }

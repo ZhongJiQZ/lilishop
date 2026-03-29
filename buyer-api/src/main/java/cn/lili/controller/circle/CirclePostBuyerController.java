@@ -4,8 +4,10 @@ import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentOperationDTO;
+import cn.lili.modules.circle.entity.dto.CirclePostFollowSearchParams;
 import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostSearchParams;
+import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
 import cn.lili.modules.circle.entity.vos.CirclePostVO;
 import cn.lili.modules.circle.service.CirclePostCommentService;
 import cn.lili.modules.circle.service.CirclePostFollowService;
@@ -67,6 +69,12 @@ public class CirclePostBuyerController {
     public ResultMessage<Object> delete(@PathVariable List<String> ids) {
         circlePostService.deleteCirclePosts(ids);
         return ResultUtil.success(ResultCode.SUCCESS);
+    }
+
+    @Operation(summary = "获取我的关注列表")
+    @GetMapping(value = "/my/follow")
+    public ResultMessage<IPage<CirclePostFollowVO>> getMyFollow(CirclePostFollowSearchParams followSearchParams) {
+        return ResultUtil.data(followService.queryByParams(followSearchParams));
     }
 
     @Operation(summary = "店铺关注")

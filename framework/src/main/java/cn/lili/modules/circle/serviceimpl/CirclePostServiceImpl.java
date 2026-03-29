@@ -23,6 +23,8 @@ import cn.lili.modules.circle.service.CirclePostFollowService;
 import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.mapper.MemberMapper;
+import cn.lili.modules.store.entity.dos.Store;
+import cn.lili.modules.store.service.StoreService;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
 import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -30,6 +32,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +45,7 @@ import java.util.List;
  * @author lensing
  * @since 2026-03-09 15:18:56
  */
+@Slf4j
 @Service
 public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CirclePost> implements CirclePostService {
     /**
@@ -53,6 +57,8 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
     private CirclePostFollowService circlePostFollowService;
     @Autowired
     private MemberMapper memberMapper;
+    @Autowired
+    private StoreService storeService;
 
     @Override
     public IPage<CirclePostVO> queryByParams(CirclePostSearchParams circlePostSearchParams) {
@@ -99,11 +105,12 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         }
         //管理端
         if (CharSequenceUtil.equals(tokenUser.getRole().name(), UserEnums.MANAGER.name())) {
-            if(StringUtils.isNotBlank(circlePost.getStoreId())) {
+            if(StringUtils.isNotEmpty(circlePostOperationDTO.getStoreId())) {
                 circlePost.setStoreId(circlePostOperationDTO.getStoreId());
             }
         }
         circlePost.setTitle(CharSequenceUtil.sub(circlePostOperationDTO.getContent(), 0, 20));
+
         //添加圈子帖子
         this.save(circlePost);
     }
@@ -127,6 +134,10 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         Page<CirclePost> data = this.page(PageUtil.initPage(page), queryWrapper);
         data.getRecords().forEach(circlePost -> {
             circlePost.setContent(SensitiveWordsFilter.filter(circlePost.getContent()));
+            if(StringUtils.isNotEmpty(circlePost.getStoreId())) {
+                Store store = storeService.getById(circlePost.getStoreId());
+                circlePost.setStoreName(store.getStoreName());
+            }
         });
         return data;
     }

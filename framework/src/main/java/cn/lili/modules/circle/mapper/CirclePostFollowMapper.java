@@ -3,8 +3,12 @@ package cn.lili.modules.circle.mapper;
 import cn.lili.modules.circle.entity.dos.CirclePostFollow;
 import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Constants;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -34,4 +38,13 @@ public interface CirclePostFollowMapper extends BaseMapper<CirclePostFollow> {
      */
     @Select("SELECT face,nick_name FROM li_circle_post_follow m left join li_member n on n.id=m.member_id WHERE followed_member_id=(SELECT member_id FROM li_store WHERE id=#{storeId})")
     IPage<CirclePostFollowVO> getFollowStoreList(IPage<StoreVO> page, String storeId);
+
+    /**
+     * 根据我的关注列表
+     *
+     * @param page         分页
+     * @param queryWrapper 查询条件
+     */
+    @Select("SELECT store_logo,store_name FROM li_circle_post_follow m left join li_store t on t.member_id=m.followed_member_id ${ew.customSqlSegment}")
+    IPage<CirclePostFollowVO> getCirclePostFollowList(Page<Object> page, @Param(Constants.WRAPPER)  QueryWrapper queryWrapper);
 }
