@@ -33,9 +33,12 @@ public class ImChatGiftOperationDTO implements Serializable {
 
     @Min(message = "必须为数字", value = 0)
     @Schema(description = "价格(平台币)", required = true)
-    private BigDecimal coinCrice;
+    private BigDecimal coinPrice;
 
     @Schema(description = "排序")
     private Integer sort;
+
+    @Schema(description = "状态 0禁用 1启用")
+    private Integer status;
 
 }

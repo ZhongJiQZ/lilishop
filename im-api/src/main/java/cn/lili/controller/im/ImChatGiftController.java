@@ -31,7 +31,7 @@ public class ImChatGiftController {
     private ImChatGiftService chatGiftService;
 
     @Operation(summary = "礼物面板")
-    @GetMapping("/gift/list")
+    @GetMapping("/list")
     public ResultMessage<List<ImChatGiftVO>> listGift(ImChatGiftQueryParams chatGiftQueryParams) {
         return ResultUtil.data(chatGiftService.getGiftList(chatGiftQueryParams));
     }

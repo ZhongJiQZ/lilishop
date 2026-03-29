@@ -1,7 +1,7 @@
 package cn.lili.modules.im.entity.dos;
 
 
-import cn.lili.mybatis.BaseTenantEntity;
+import cn.lili.mybatis.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -20,7 +20,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-public class ImChatGift extends BaseTenantEntity {
+public class ImChatGift extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -37,5 +37,5 @@ public class ImChatGift extends BaseTenantEntity {
     private Integer sort;
 
     @Schema(description = "状态 0禁用 1启用")
-    private Boolean status;
+    private Integer status;
 }

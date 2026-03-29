@@ -56,7 +56,6 @@ public class ChatGiftManagerController {
     public ResultMessage<GoodsOperationDTO> save(@Valid @RequestBody ImChatGiftOperationDTO chatGiftOperationDTO) {
         ImChatGift chatGift = new ImChatGift();
         BeanUtils.copyProperties(chatGiftOperationDTO,chatGift);
-        chatGift.setStatus(false);
         chatGiftService.save(chatGift);
         return ResultUtil.success();
     }
