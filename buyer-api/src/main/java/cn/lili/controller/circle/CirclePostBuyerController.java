@@ -4,13 +4,10 @@ import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.circle.entity.dto.CirclePostCommentOperationDTO;
-import cn.lili.modules.circle.entity.dto.CirclePostFollowSearchParams;
 import cn.lili.modules.circle.entity.dto.CirclePostOperationDTO;
 import cn.lili.modules.circle.entity.dto.CirclePostSearchParams;
-import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
 import cn.lili.modules.circle.entity.vos.CirclePostVO;
 import cn.lili.modules.circle.service.CirclePostCommentService;
-import cn.lili.modules.circle.service.CirclePostFollowService;
 import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -40,8 +37,6 @@ public class CirclePostBuyerController {
     private CirclePostService circlePostService;
     @Autowired
     private CirclePostCommentService commentService;
-    @Autowired
-    private CirclePostFollowService followService;
 
     @Operation(summary = "获取圈子帖子列表")
     @GetMapping
@@ -71,23 +66,4 @@ public class CirclePostBuyerController {
         return ResultUtil.success(ResultCode.SUCCESS);
     }
 
-    @Operation(summary = "获取我的关注列表")
-    @GetMapping(value = "/my/follow")
-    public ResultMessage<IPage<CirclePostFollowVO>> getMyFollow(CirclePostFollowSearchParams followSearchParams) {
-        return ResultUtil.data(followService.queryByParams(followSearchParams));
-    }
-
-    @Operation(summary = "店铺关注")
-    @PostMapping(value = "/{storeId}/follow")
-    public ResultMessage<Object> addStoreFollow(@PathVariable String storeId) {
-        followService.addStoreFollow(storeId);
-        return ResultUtil.success();
-    }
-
-    @Operation(summary = "取消店铺关注")
-    @DeleteMapping(value = "/{storeId}/follow")
-    public ResultMessage<Object> unfollowStore(@PathVariable String storeId) {
-        followService.unfollowStore(storeId);
-        return ResultUtil.success();
-    }
 }

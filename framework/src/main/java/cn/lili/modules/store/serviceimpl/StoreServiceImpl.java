@@ -12,8 +12,6 @@ import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.utils.BeanUtil;
 import cn.lili.common.vo.PageVO;
-import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
-import cn.lili.modules.circle.mapper.CirclePostFollowMapper;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
 import cn.lili.modules.goods.service.GoodsService;
 import cn.lili.modules.goods.service.GoodsSkuService;
@@ -101,10 +99,6 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
     @Autowired
     @Lazy
     private FootprintService footprintService;
-
-    @Autowired
-    @Lazy
-    private CirclePostFollowMapper followMapper;
 
     @Autowired
     private Cache cache;
@@ -453,11 +447,6 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         }
 
         return resultPage;
-    }
-
-    @Override
-    public IPage<CirclePostFollowVO> getStoreFollows(String storeId, PageVO page) {
-        return followMapper.getFollowStoreList(PageUtil.initPage(page), storeId);
     }
 
     /**

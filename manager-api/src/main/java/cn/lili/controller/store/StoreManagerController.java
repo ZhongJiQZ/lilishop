@@ -3,7 +3,6 @@ package cn.lili.controller.store;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.vo.PageVO;
 import cn.lili.common.vo.ResultMessage;
-import cn.lili.modules.circle.entity.vos.CirclePostFollowVO;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.dto.AdminStoreApplyDTO;
 import cn.lili.modules.store.entity.dto.StoreEditDTO;
@@ -136,10 +135,4 @@ public class StoreManagerController {
         return ResultUtil.success();
     }
 
-    @Operation(summary = "获取店铺粉丝分页列表")
-    @Parameter(name = "page", description = "分页参数", required = true)
-    @GetMapping("/{storeId}/follow")
-    public ResultMessage<IPage<CirclePostFollowVO>> getStoreFollows(@PathVariable String storeId, PageVO page) {
-        return ResultUtil.data(storeService.getStoreFollows(storeId, page));
-    }
 }
