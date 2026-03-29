@@ -1,7 +1,7 @@
 package cn.lili.modules.im.entity.dos;
 
 
-import cn.lili.mybatis.BaseTenantEntity;
+import cn.lili.mybatis.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -16,11 +16,11 @@ import java.math.BigDecimal;
  */
 @Data
 @TableName("li_im_member_income")
-@Schema(description = "会员收益表表（试穿员）")
+@Schema(description = "会员收益表（试穿员）")
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-public class ImMemberIncome extends BaseTenantEntity {
+public class ImMemberIncome extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 

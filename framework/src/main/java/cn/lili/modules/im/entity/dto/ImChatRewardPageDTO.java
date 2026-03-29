@@ -27,6 +27,12 @@ public class ImChatRewardPageDTO extends PageVO {
     @Schema(description = "打赏人ID（用户）")
     private String fromMemberId;
 
+    @Schema(description = "打赏人名称")
+    private String fromMemberName;
+
     @Schema(description = "被打赏人ID（试穿员）")
     private String toMemberId;
+
+    @Schema(description = "被打赏人名称（试穿员）")
+    private String toMemberName;
 }

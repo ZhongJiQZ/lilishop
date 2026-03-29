@@ -149,8 +149,14 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
         if (StringUtils.isNotEmpty(page.getFromMemberId())) {
             queryWrapper.like(ImChatReward::getFromMemberId, page.getFromMemberId());
         }
+        if (StringUtils.isNotEmpty(page.getFromMemberName())) {
+            queryWrapper.like(ImChatReward::getFromMemberName, page.getFromMemberName());
+        }
         if (StringUtils.isNotEmpty(page.getToMemberId())) {
             queryWrapper.like(ImChatReward::getToMemberId, page.getToMemberId());
+        }
+        if (StringUtils.isNotEmpty(page.getToMemberName())) {
+            queryWrapper.like(ImChatReward::getToMemberName, page.getToMemberName());
         }
         queryWrapper.orderByDesc(ImChatReward::getCreateTime);
         return this.page(PageUtil.initPage(page), queryWrapper);

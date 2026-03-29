@@ -165,6 +165,12 @@ CREATE TABLE `li_im_chat_gift` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天-礼物配置表';
 
+ALTER TABLE `lilishop`.`li_im_chat_reward`
+    ADD COLUMN `create_by` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '创建者' AFTER `status`,
+    ADD COLUMN `update_by` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '更新者' AFTER `create_time`,
+    ADD COLUMN `update_time` datetime(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间' AFTER `update_by`,
+    ADD COLUMN `delete_flag` bit(1) NULL DEFAULT b'0' COMMENT '删除标志（0未删 1已删）' AFTER `update_time`;
+
 CREATE TABLE `li_im_chat_reward` (
     `id` varchar(64) NOT NULL COMMENT '主键ID',
     `gift_id` varchar(64) NOT NULL COMMENT '礼物ID',
@@ -179,7 +185,11 @@ CREATE TABLE `li_im_chat_reward` (
     `to_member_id` varchar(64) NOT NULL COMMENT '被打赏人ID（试穿员）',
     `to_member_name` varchar(255) DEFAULT NULL COMMENT '被打赏人名称',
     `to_member_avatar` varchar(500) DEFAULT NULL COMMENT '被打赏人头像',
-    `create_time` datetime DEFAULT NULL COMMENT '打赏时间',
+    `create_by`     VARCHAR(255)     DEFAULT NULL COMMENT '创建者',
+    `create_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+    `delete_flag`   BIT(1)           DEFAULT b'0' COMMENT '删除标志（0未删 1已删）',
+    `update_by`     VARCHAR(255)     DEFAULT NULL COMMENT '更新者',
+    `update_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_from_member_id` (`from_member_id`),
     KEY `idx_to_member_id` (`to_member_id`)
@@ -191,7 +201,11 @@ CREATE TABLE `li_im_member_income` (
     `member_name` varchar(255) DEFAULT NULL COMMENT '试穿员名称',
     `total_income` decimal(10, 2) DEFAULT 0 COMMENT '总收益（平台币）',
     `today_income` decimal(10, 2) DEFAULT 0 COMMENT '今日收益（平台币）',
-    `update_time` datetime DEFAULT NULL COMMENT '最后更新时间',
+    `create_by`     VARCHAR(255)     DEFAULT NULL COMMENT '创建者',
+    `create_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+    `delete_flag`   BIT(1)           DEFAULT b'0' COMMENT '删除标志（0未删 1已删）',
+    `update_by`     VARCHAR(255)     DEFAULT NULL COMMENT '更新者',
+    `update_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_member_id` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员-试穿员收益表';

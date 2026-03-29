@@ -1,6 +1,8 @@
 package cn.lili.modules.im.service;
 
-import cn.lili.modules.im.entity.dos.ImChatReward;
+import cn.lili.modules.im.entity.dos.ImMemberIncome;
+import cn.lili.modules.member.entity.dto.ImMemberIncomePageDTO;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
@@ -8,6 +10,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
  *
  * @author lensing
  */
-public interface ImMemberIncomeService extends IService<ImChatReward> {
+public interface ImMemberIncomeService extends IService<ImMemberIncome> {
 
+    IPage<ImMemberIncome> queryImMemberIncomeByParams(ImMemberIncomePageDTO page);
 }
