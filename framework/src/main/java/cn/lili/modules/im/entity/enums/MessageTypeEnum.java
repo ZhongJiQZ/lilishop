@@ -13,11 +13,13 @@ public enum MessageTypeEnum {
      * 图片
      * 语音
      * 视频
+     * 打赏
      */
     MESSAGE,
     PICTURE,
     VOICE,
     GOODS,
     ORDER,
-    VIDEO
+    VIDEO,
+    REWARD
 }

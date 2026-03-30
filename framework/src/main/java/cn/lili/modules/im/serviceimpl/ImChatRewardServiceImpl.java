@@ -9,6 +9,7 @@ import cn.lili.common.utils.StringUtils;
 import cn.lili.modules.im.entity.dos.ImChatGift;
 import cn.lili.modules.im.entity.dos.ImChatReward;
 import cn.lili.modules.im.entity.dos.ImMemberIncome;
+import cn.lili.modules.im.entity.dto.ImChatRewardDTO;
 import cn.lili.modules.im.entity.dto.ImChatRewardPageDTO;
 import cn.lili.modules.im.entity.dto.RewardQueryParams;
 import cn.lili.modules.im.mapper.ImChatGiftMapper;
@@ -57,7 +58,7 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
     private StoreService storeService;
 
     @Override
-    public void sendReward(RewardQueryParams dto) {
+    public void sendReward(ImChatRewardDTO dto) {
         //校验店铺
         Store store = checkStore(dto.getToMemberId());
         String userId = UserContext.getCurrentUser().getId();

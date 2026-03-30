@@ -2,6 +2,7 @@ package cn.lili.modules.im.service;
 
 import cn.lili.modules.im.entity.dos.ImChatReward;
 import cn.lili.modules.im.entity.dos.ImMemberIncome;
+import cn.lili.modules.im.entity.dto.ImChatRewardDTO;
 import cn.lili.modules.im.entity.dto.ImChatRewardPageDTO;
 import cn.lili.modules.im.entity.dto.RewardQueryParams;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -18,7 +19,7 @@ import java.util.List;
 public interface ImChatRewardService extends IService<ImChatReward> {
 
 
-    void sendReward(@Valid RewardQueryParams dto);
+    void sendReward(@Valid ImChatRewardDTO dto);
 
     List<ImChatReward> getMyReward(RewardQueryParams rewardQueryParams);
 

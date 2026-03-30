@@ -4,6 +4,7 @@ import cn.lili.common.utils.StringUtils;
 import cn.lili.common.vo.PageVO;
 import cn.lili.modules.im.entity.dos.ImChatReward;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -23,18 +24,22 @@ public class RewardQueryParams extends PageVO {
     /**
      * 礼物ID
      */
+    @Schema(description = "礼物ID")
     private String giftId;
     /**
      * 试穿员ID（店铺ID）
      */
+    @Schema(description = "试穿员ID（店铺ID）")
     private String toMemberId;
     /**
      * 打赏人ID（用户）
      */
+    @Schema(description = "打赏人ID（用户）")
     private String fromMemberId;
     /**
      * 数量
      */
+    @Schema(description = "数量")
     private Integer num = 1;
 
     public LambdaQueryWrapper<ImChatReward> initQueryWrapper() {

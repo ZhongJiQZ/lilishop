@@ -1,5 +1,6 @@
 package cn.lili.modules.im.entity.dto;
 
+import cn.lili.common.utils.StringUtils;
 import cn.lili.common.vo.PageVO;
 import cn.lili.modules.im.entity.dos.ImChatGift;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -30,8 +31,10 @@ public class ImChatGiftQueryParams extends PageVO {
 
     public LambdaQueryWrapper<ImChatGift> initQueryWrapper() {
         LambdaQueryWrapper<ImChatGift> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper.like(ImChatGift::getGiftName, giftName);
-        lambdaQueryWrapper.eq(ImChatGift::getStatus, false);
+        if(StringUtils.isNotEmpty(giftName)){
+            lambdaQueryWrapper.like(ImChatGift::getGiftName, giftName);
+        }
+        lambdaQueryWrapper.eq(ImChatGift::getStatus, 1);
         lambdaQueryWrapper.orderByDesc(ImChatGift::getCreateTime);
 //        lambdaQueryWrapper.last("limit " + num);
         return lambdaQueryWrapper;

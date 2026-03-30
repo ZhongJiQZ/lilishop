@@ -15,6 +15,7 @@ import cn.lili.modules.member.entity.vo.QRCodeLoginSessionVo;
 import cn.lili.modules.member.entity.vo.QRLoginResultVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -331,4 +332,6 @@ public interface MemberService extends IService<Member> {
      * @return 操作结果
      */
     Boolean updateMemberCoin(BigDecimal coin, String type, String memberId, String content);
+
+    void addInviter(@NotNull(message = "邀请码为空") String inviterCode);
 }

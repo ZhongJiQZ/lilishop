@@ -221,6 +221,16 @@ public class MemberBuyerController {
         return ResultUtil.data(memberService.getUserInfo());
     }
 
+    @Operation(summary = "添加邀请码")
+    @Parameters({
+            @Parameter(name = "password", description = "是否保存登录", required = true)
+    })
+    @PostMapping("/inviter")
+    public ResultMessage<Object> addInviter(@NotNull(message = "邀请码为空") @RequestParam String code) {
+        memberService.addInviter(code);
+        return ResultUtil.success();
+    }
+
     @Operation(summary = "通过短信重置密码")
     @Parameters({
             @Parameter(name = "mobile", description = "手机号", required = true),

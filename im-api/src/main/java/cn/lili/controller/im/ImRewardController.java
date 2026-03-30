@@ -4,6 +4,7 @@ import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.im.entity.dos.ImChatReward;
 import cn.lili.modules.im.entity.dos.ImMemberIncome;
+import cn.lili.modules.im.entity.dto.ImChatRewardDTO;
 import cn.lili.modules.im.entity.dto.RewardQueryParams;
 import cn.lili.modules.im.service.ImChatRewardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,7 +36,7 @@ public class ImRewardController {
 
     @Operation(summary = "打赏")
     @GetMapping("/send")
-    public ResultMessage sendReward(@RequestBody @Valid RewardQueryParams dto) {
+    public ResultMessage sendReward(@RequestBody @Valid ImChatRewardDTO dto) {
         chatRewardService.sendReward(dto);
         return ResultUtil.success();
     }
