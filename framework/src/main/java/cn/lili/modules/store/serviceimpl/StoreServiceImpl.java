@@ -1,5 +1,6 @@
 package cn.lili.modules.store.serviceimpl;
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.cache.Cache;
@@ -12,7 +13,10 @@ import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.utils.BeanUtil;
 import cn.lili.common.vo.PageVO;
+import cn.lili.modules.goods.entity.dos.Goods;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
+import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
+import cn.lili.modules.goods.entity.vos.GoodsTradeRankingVO;
 import cn.lili.modules.goods.service.GoodsService;
 import cn.lili.modules.goods.service.GoodsSkuService;
 import cn.lili.modules.member.entity.dos.Clerk;
@@ -313,6 +317,7 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             //根据会员创建店铺
             store = new Store(member);
             BeanUtil.copyProperties(storeCompanyDTO, store);
+            store.setStoreDisable(StoreStatusEnum.APPLYING.name());
             this.save(store);
             StoreDetail storeDetail = new StoreDetail();
             storeDetail.setStoreId(store.getId());
@@ -324,6 +329,7 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             checkStoreStatus(store);
             //复制参数 修改已存在店铺
             BeanUtil.copyProperties(storeCompanyDTO, store);
+            store.setStoreDisable(StoreStatusEnum.APPLYING.name());
             this.updateById(store);
             //判断是否存在店铺详情，如果没有则进行新建，如果存在则进行修改
             StoreDetail storeDetail = storeDetailService.getStoreDetail(store.getId());
@@ -437,11 +443,33 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         LambdaQueryWrapper<StoreTradeRankingVO> wrapper = new LambdaQueryWrapper<>();
         // 只查询正常营业的店铺
         wrapper.eq(Store::getStoreDisable, StoreStatusEnum.OPEN.value());
-        IPage<StoreTradeRankingVO> resultPage = this.baseMapper.getStoreTradeRankingList(PageUtil.initPage(page), wrapper);
 
-        // 🔥 自动赋值排名序号（第几名）
-        int start = (page.getPageNumber() - 1) * page.getPageSize();
+        // 1. 查询店铺排行榜
+        IPage<StoreTradeRankingVO> resultPage = this.baseMapper.getStoreTradeRankingList(PageUtil.initPage(page), wrapper);
         List<StoreTradeRankingVO> records = resultPage.getRecords();
+
+        if (CollectionUtil.isEmpty(records)) {
+            return resultPage;
+        }
+
+        // 2. 给每个店铺 【加载前5个商品】
+        for (StoreTradeRankingVO vo : records) {
+            List<Goods> goodsList = goodsService.list(new LambdaQueryWrapper<Goods>()
+                    .eq(Goods::getStoreId, vo.getId()) // 按店铺ID查
+                    .eq(Goods::getMarketEnable, GoodsStatusEnum.UPPER.name()) // 只查上架商品
+                    .orderByDesc(Goods::getBuyCount) // 按销量倒序（最热在前）
+                    .last("LIMIT 5") // 只取前5个
+            );
+            List<GoodsTradeRankingVO> list = goodsList.stream().map(goods -> {
+                GoodsTradeRankingVO goodsTradeRankingVO = new GoodsTradeRankingVO();
+                BeanUtil.copyProperties(goods, goodsTradeRankingVO);
+                return goodsTradeRankingVO;
+            }).toList();
+            vo.setGoodsList(list);
+        }
+
+        // 3. 自动赋值排名序号（第几名）
+        int start = (page.getPageNumber() - 1) * page.getPageSize();
         for (int i = 0; i < records.size(); i++) {
             records.get(i).setRank(start + i + 1);
         }

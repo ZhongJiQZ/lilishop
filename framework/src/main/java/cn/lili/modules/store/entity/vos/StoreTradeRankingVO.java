@@ -1,9 +1,13 @@
 package cn.lili.modules.store.entity.vos;
 
+import cn.lili.modules.goods.entity.vos.GoodsTradeRankingVO;
 import cn.lili.modules.store.entity.dos.Store;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 店铺成交排行榜VO
@@ -29,5 +33,8 @@ public class StoreTradeRankingVO extends Store {
 
     @Schema(description = "成交订单数")
     private Long orderCount;
+
+    @Schema(description = "商品列表")
+    private List<GoodsTradeRankingVO> goodsList = new ArrayList<>();
 
 }
