@@ -2,7 +2,6 @@ package cn.lili.controller.setting;
 
 import cn.hutool.json.JSONUtil;
 import cn.lili.cache.Cache;
-import cn.lili.common.aop.annotation.DemoSite;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.exception.ServiceException;
@@ -195,6 +194,18 @@ public class SettingManagerController {
                 return setting == null ?
                         ResultUtil.data(new HotWordsSetting()) :
                         ResultUtil.data(JSONUtil.toBean(setting.getSettingValue(), HotWordsSetting.class));
+            case COIN_SETTING:
+                return setting == null ?
+                        ResultUtil.data(new CoinSetting()) :
+                        ResultUtil.data(JSONUtil.toBean(setting.getSettingValue(), CoinSetting.class));
+            case RECHARGE_AMOUNT_SETTING:
+                return setting == null ?
+                        ResultUtil.data(new RechargeAmountSetting()) :
+                        ResultUtil.data(JSONUtil.toBean(setting.getSettingValue(), RechargeAmountSetting.class));
+            case RECHARGE_POPUP_SETTING:
+                return setting == null ?
+                        ResultUtil.data(new RechargePopupSetting()) :
+                        ResultUtil.data(JSONUtil.toBean(setting.getSettingValue(), RechargePopupSetting.class));
             default:
                 throw new ServiceException(ResultCode.SETTING_NOT_TO_SET);
         }

@@ -20,9 +20,6 @@ public class RechargePopupSetting implements Serializable {
     @Schema(description = "活动内容")
     private String content;
 
-    @Schema(description = "活动图片")
-    private String images;
-
     @Schema(description = "跳转链接")
     private String url;
 

@@ -2,9 +2,9 @@ package cn.lili.modules.system.entity.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import org.apache.poi.hpsf.Decimal;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 /**
  * 充值价格设置
@@ -19,7 +19,7 @@ public class RechargeAmountSetting implements Serializable {
     private String name;
 
     @Schema(description = "金额")
-    private Decimal price;
+    private BigDecimal price;
 
     @Schema(description = "描述说明")
     private String desc;
