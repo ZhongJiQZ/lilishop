@@ -13,10 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -35,7 +32,7 @@ public class ImRewardController {
     private ImChatRewardService chatRewardService;
 
     @Operation(summary = "打赏")
-    @GetMapping("/send")
+    @PostMapping("/send")
     public ResultMessage sendReward(@RequestBody @Valid ImChatRewardDTO dto) {
         chatRewardService.sendReward(dto);
         return ResultUtil.success();

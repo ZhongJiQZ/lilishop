@@ -856,17 +856,18 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         if (member != null) {
             //平台币变动后的会员平台币
             BigDecimal currentCoin;
+            BigDecimal userCoin = member.getCoin() == null ? BigDecimal.ZERO : member.getCoin();
             //会员总获得平台币
-            BigDecimal totalCoin = member.getTotalCoin();
+            BigDecimal totalCoin = member.getTotalCoin() == null ? BigDecimal.ZERO : member.getTotalCoin();
             //如果增加平台币
             if (type.equals(CoinTypeEnum.INCREASE.name())) {
-                currentCoin = member.getCoin().add(coin);
+                currentCoin = userCoin.add(coin);
                 //如果是增加平台币 需要增加总获得平台币
                 totalCoin = totalCoin.add(coin);
             }
             //否则扣除平台币
             else {
-                currentCoin = member.getCoin().subtract(coin).compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : member.getCoin().subtract(coin);
+                currentCoin = userCoin.subtract(coin).compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : userCoin.subtract(coin);
             }
             member.setCoin(currentCoin);
             member.setTotalCoin(totalCoin);

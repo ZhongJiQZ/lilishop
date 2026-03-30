@@ -70,12 +70,14 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
 
         // 2. 判断余额
         Member member = memberService.getById(userId);
-        if (member.getCoin().compareTo(totalCoin) <= 0) {
+        BigDecimal userCoin = member.getCoin() == null ? BigDecimal.ZERO : member.getCoin();
+        // 判断余额
+        if (userCoin.compareTo(totalCoin) < 0) {
             throw new ServiceException(ResultCode.USER_COINS_INSUFFICIENT_BALANCE);
         }
 
         // 3. 扣减平台币
-        memberService.updateMemberCoin(totalCoin, CoinTypeEnum.INCREASE.name(), member.getId(), "会员打赏礼物"+ gift.getGiftName() + "(" + totalCoin + "币)");
+        memberService.updateMemberCoin(totalCoin, CoinTypeEnum.REDUCE.name(), member.getId(), "会员打赏礼物"+ gift.getGiftName() + "(" + totalCoin + "币)");
 
         // 4. 被打赏人信息
         Member toMember = memberService.getById(store.getMemberId());
@@ -109,7 +111,8 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
             memberIncomeMapper.insert(income);
         } else {
             // 判断最后更新时间是不是【今天】
-            boolean isToday = DateUtil.isSameDay(income.getUpdateTime(), new Date());
+            Date judgeTime = income.getUpdateTime() != null ? income.getUpdateTime() : income.getCreateTime();
+            boolean isToday = DateUtil.isSameDay(judgeTime, new Date());
 
             memberIncomeMapper.update(null, new LambdaUpdateWrapper<ImMemberIncome>()
                     .eq(ImMemberIncome::getId, income.getId())

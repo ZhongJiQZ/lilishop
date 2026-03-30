@@ -137,7 +137,11 @@ public class Store extends BaseEntity {
 
     public Store(Member member, AdminStoreApplyDTO adminStoreApplyDTO) {
         BeanUtil.copyProperties(adminStoreApplyDTO, this);
-
+        if (adminStoreApplyDTO.getStoreLogo() == null) {
+            if (member.getFace() != null) {
+                this.storeLogo = member.getFace();
+            }
+        }
         this.memberId = member.getId();
         this.memberName = member.getUsername();
         storeDisable = StoreStatusEnum.APPLYING.value();
