@@ -913,7 +913,7 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         }
         Member member = this.getBaseMapper().selectById(tokenUser.getId());
         member.setInviterId(inviter.getId());
-        member.setInviteStatus(true);
+        member.setInviteStatus(1);
         member.setInviterCode(inviterCode);
         member.setInviterName(inviter.getNickName());
         this.getBaseMapper().updateById(member);

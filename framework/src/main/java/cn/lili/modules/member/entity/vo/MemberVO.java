@@ -56,11 +56,17 @@ public class MemberVO implements Serializable {
     @Schema(description = "积分数量")
     private Long point;
 
+    @Schema(description = "平台币数量")
+    private Long coin;
+
     @Schema(description = "会员预存款")
     private Double memberWallet;
 
     @Schema(description = "积分总数量")
     private Long totalPoint;
+
+    @Schema(description = "平台币总数量")
+    private Long totalCoin;
 
     @Schema(description = "会员头像")
     private String face;
@@ -76,6 +82,9 @@ public class MemberVO implements Serializable {
 
     @Schema(description = "openId")
     private String openId;
+
+    @Schema(description = "是否是VIP会员 0=普通用户 1=会员用户")
+    private Integer isVip;
 
     /**
      * @see ClientTypeEnum

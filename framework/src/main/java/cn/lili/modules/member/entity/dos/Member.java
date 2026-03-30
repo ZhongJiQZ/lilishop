@@ -109,13 +109,13 @@ public class Member extends BaseEntity {
     private BigDecimal totalCoin;
 
     @Schema(description = "是否是VIP会员 0=普通用户 1=会员用户")
-    private Boolean isVip;
+    private Integer isVip;
 
     @Schema(description = "邀请码")
     private String inviteCode;
 
     @Schema(description = "邀请码状态 0=未填写 1=已填写")
-    private Boolean inviteStatus;
+    private Integer inviteStatus;
 
     @Schema(description = "邀请人ID")
     private String inviterId;
@@ -140,8 +140,8 @@ public class Member extends BaseEntity {
         this.lastLoginDate = new Date();
         this.coin = new BigDecimal("0");
         this.totalCoin = new BigDecimal("0");
-        this.isVip = false;
-        this.inviteStatus = false;
+        this.isVip = 0;
+        this.inviteStatus = 0;
         // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
         this.inviteCode = Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase();
     }
@@ -164,8 +164,8 @@ public class Member extends BaseEntity {
         this.lastLoginDate = new Date();
         this.coin = new BigDecimal("0");
         this.totalCoin = new BigDecimal("0");
-        this.isVip = false;
-        this.inviteStatus = false;
+        this.isVip = 0;
+        this.inviteStatus = 0;
         // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
         this.inviteCode = Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase();
     }

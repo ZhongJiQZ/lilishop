@@ -161,7 +161,7 @@ public class MemberCoinExecute implements MemberRechargeEvent
         //判断是否首次充值
         if (isFirstPaidRecharge(member.getId())) {
             //更新为VIP会员
-            member.setIsVip(true);
+            member.setIsVip(1);
             memberService.updateById(member);
             //获取平台币设置
             CoinSetting coinSetting = getCoinSetting();

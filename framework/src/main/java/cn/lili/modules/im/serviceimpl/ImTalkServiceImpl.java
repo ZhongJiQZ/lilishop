@@ -6,6 +6,7 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
+import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.modules.im.entity.dos.ImMessage;
 import cn.lili.modules.im.entity.dos.ImTalk;
 import cn.lili.modules.im.entity.dto.IMTalkQueryParams;
@@ -227,6 +228,7 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
 
         List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> {
             ImTalkVO imTalkVO = new ImTalkVO(imTalk, authUser.getId());
+            imTalkVO.setLastTalkMessage(SensitiveWordsFilter.filter(imTalkVO.getLastTalkMessage()));
             if (imTalk.getStoreFlag1()) {
                 Member opponentMember = memberMap.get(imTalk.getUserId1());
                 if (opponentMember != null) {
@@ -275,7 +277,11 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         queryWrapper.orderByDesc(ImTalk::getLastTalkTime);
         List<ImTalk> imTalks = this.list(queryWrapper);
 
-        List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> new ImTalkVO(imTalk, storeId)).collect(Collectors.toList());
+        List<ImTalkVO> imTalkVOList = imTalks.stream().map(imTalk -> {
+            ImTalkVO imTalkVO = new ImTalkVO(imTalk, storeId);
+            imTalkVO.setLastTalkMessage(SensitiveWordsFilter.filter(imTalk.getLastTalkMessage()));
+            return imTalkVO;
+        }).collect(Collectors.toList());
         getUnread(imTalkVOList);
         return imTalkVOList;
     }

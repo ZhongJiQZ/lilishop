@@ -54,4 +54,7 @@ public class ManagerMemberEditDTO {
 
     @Schema(description = "会员头像")
     private String face;
+
+    @Schema(description = "是否是VIP会员 0=普通用户 1=会员用户")
+    private Integer isVip;
 }

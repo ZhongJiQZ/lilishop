@@ -57,7 +57,7 @@ public interface StoreMapper extends BaseMapper<Store> {
      * @param queryWrapper 查询条件
      * @return 店铺VO分页列表
      */
-    @Select("SELECT s.id, s.store_name, s.store_logo, COUNT(o.id) AS order_count " +
+    @Select("SELECT s.id, s.store_name, s.store_logo, s.store_desc, COUNT(o.id) AS order_count " +
             "FROM li_store s " +
             "LEFT JOIN li_order o ON s.id = o.store_id " +
             "AND o.order_status = 'COMPLETE' " + // 只统计已完成订单
