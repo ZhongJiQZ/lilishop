@@ -75,6 +75,9 @@ public class Recharge extends BaseIdEntity {
     @Schema(description = "第三方流水")
     private String receivableNo;
 
+    @Schema(description = "充值类型 0：普通充值 1：会员充值")
+    private Integer rechargeType;
+
     @Schema(description = "支付时间")
     @JsonFormat(timezone = "GMT+8", pattern = "yyyy-MM-dd HH:mm:ss")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")

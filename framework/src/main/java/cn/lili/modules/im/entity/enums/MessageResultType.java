@@ -25,6 +25,7 @@ public enum MessageResultType {
     UN_READ,
     HISTORY,
     SYSTEM_TIPS,
-    OFFLINE
+    OFFLINE,
+    ERROR
 
 }

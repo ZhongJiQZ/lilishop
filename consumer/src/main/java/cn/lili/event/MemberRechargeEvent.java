@@ -1,6 +1,6 @@
 package cn.lili.event;
 
-import cn.lili.modules.member.entity.dos.Member;
+import cn.lili.modules.wallet.entity.dos.Recharge;
 
 /**
  * 会员充值消息
@@ -13,7 +13,7 @@ public interface MemberRechargeEvent {
     /**
      * 会员充值
      *
-     * @param member 会员
+     * @param recharge 预存款充值记录
      */
-    void memberRecharge(Member member);
+    void memberRecharge(Recharge recharge);
 }

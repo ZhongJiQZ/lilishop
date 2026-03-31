@@ -143,7 +143,6 @@ public enum ResultCode {
     USER_CONNECT_BANDING_ERROR(20023, "当前联合登陆方式，已绑定其他账号，需进行解绑操作"),
     USER_CONNECT_NOT_EXIST_ERROR(20024, "暂无联合登陆信息，无法实现一键注册功能，请点击第三方登录进行授权"),
     USER_POINTS_ERROR(20024, "用户积分不足"),
-    USER_COINS_INSUFFICIENT_BALANCE(20024, "用户平台币余额不足"),
     CLERK_SUPPER(20025, "店主无法操作"),
     CLERK_SAVE_ERROR(20026, "店员保存失败"),
     CLERK_NOT_FOUND_ERROR(20027, "店员不存在"),
@@ -154,6 +153,8 @@ public enum ResultCode {
     CLERK_CURRENT_SUPPER(20032, "无法删除当前登录店员"),
     CANT_EDIT_CLERK_SHOPKEEPER(20033, "无法在店员管理编辑店员信息"),
     USER_MOBILE_REPEATABLE_ERROR(20034, "该手机号已存在"),
+    USER_COINS_INSUFFICIENT_BALANCE(20035, "用户平台币余额不足"),
+    PLATFORM_COIN_OPERATION_FAILED(20036, "平台币操作失败，请稍后重试"),
     /**
      * 权限
      */

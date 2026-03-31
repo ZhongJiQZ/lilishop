@@ -50,6 +50,9 @@ public class CirclePostVO {
     @Schema(description = "评论列表")
     private List<CirclePostCommentVO> commentList;
 
+    @Schema(description = "店铺关注标识")
+    private Boolean isCollection;
+
     public List<String> getImages() {
         return JSON.parseArray(this.images, String.class); // Fastjson
         // 或 ObjectMapper.readValue(product.getImages(), new TypeReference<List<String>>(){});

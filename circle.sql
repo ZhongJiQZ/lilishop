@@ -209,3 +209,7 @@ CREATE TABLE `li_im_member_income` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_member_id` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员-试穿员收益表';
+
+-- 充值添加字段
+ALTER TABLE `lilishop`.`li_recharge`
+    ADD COLUMN `recharge_type` int NULL DEFAULT NULL COMMENT '充值类型 0：普通充值 1：会员充值' AFTER `receivable_no`;

@@ -71,6 +71,26 @@ public class RechargeServiceImpl extends ServiceImpl<RechargeMapper, Recharge> i
         String sn = "Y" + SnowFlake.getId();
         //整合充值订单数据
         Recharge recharge = new Recharge(sn, authUser.getId(), authUser.getUsername(), price);
+        recharge.setRechargeType(0);
+        //添加预存款充值账单
+        this.save(recharge);
+        //返回预存款
+        return recharge;
+    }
+
+    @Override
+    public Recharge rechargeMember(Double price) {
+        if (price == null || price <= 0 || price > 1000000) {
+            throw new ServiceException(ResultCode.RECHARGE_PRICE_ERROR);
+        }
+
+        //获取当前登录的会员
+        AuthUser authUser = UserContext.getCurrentUser();
+        //构建sn
+        String sn = "Y" + SnowFlake.getId();
+        //整合充值订单数据
+        Recharge recharge = new Recharge(sn, authUser.getId(), authUser.getUsername(), price);
+        recharge.setRechargeType(1);
         //添加预存款充值账单
         this.save(recharge);
         //返回预存款

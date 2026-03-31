@@ -95,4 +95,13 @@ public class ImMessageController {
         imMessageService.cleanUnreadMessage();
         return ResultUtil.success();
     }
+
+    /**
+     * 获取试穿员消息未读数量
+     * @return 未读消息数
+     */
+    @GetMapping("/unread/total")
+    public ResultMessage<Long> unreadTotalCount() {
+        return ResultUtil.data(imMessageService.unreadMessageTotalCount());
+    }
 }

@@ -76,11 +76,31 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
             throw new ServiceException(ResultCode.USER_COINS_INSUFFICIENT_BALANCE);
         }
 
-        // 3. 扣减平台币
-        memberService.updateMemberCoin(totalCoin, CoinTypeEnum.REDUCE.name(), member.getId(), "会员打赏礼物"+ gift.getGiftName() + "(" + totalCoin + "币)");
+        // 3. 扣减发送人平台币
+        boolean deductSuccess = memberService.updateMemberCoin(totalCoin, CoinTypeEnum.REDUCE.name(), member.getId(), "会员打赏礼物：" + gift.getGiftName() + "，消耗平台币(" + totalCoin + "币)");
+        if (!deductSuccess) {
+            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED);
+        }
 
-        // 4. 被打赏人信息
-        Member toMember = memberService.getById(store.getMemberId());
+        // 被打赏人信息（店铺所属会员）
+        Member toMember = memberService.getOne(new LambdaQueryWrapper<Member>()
+                .eq(Member::getStoreId, dto.getToMemberId())
+                .last("LIMIT 1"));
+        if (toMember == null) {
+            throw new ServiceException(ResultCode.USER_NOT_EXIST, "被打赏用户不存在");
+        }
+
+        // 给被打赏人增加平台币
+        boolean addSuccess = memberService.updateMemberCoin(
+                totalCoin,
+                CoinTypeEnum.INCREASE.name(),
+                toMember.getId(),
+                "收到会员打赏礼物：" + gift.getGiftName() + "，获得平台币(" + totalCoin + "币)"
+        );
+        if (!addSuccess) {
+            log.error("打赏功能——给被打赏人【{}】增加平台币失败，金额：{}", toMember.getId(), totalCoin);
+            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "打赏失败，平台币发放异常");
+        }
 
         // 5. 写入打赏记录
         ImChatReward reward = new ImChatReward();

@@ -8,6 +8,7 @@ import cn.lili.modules.member.entity.dos.MemberSign;
 import cn.lili.modules.member.entity.dto.MemberCoinMessage;
 import cn.lili.modules.member.entity.dto.MemberPointMessage;
 import cn.lili.modules.member.service.MemberSignService;
+import cn.lili.modules.wallet.entity.dos.Recharge;
 import cn.lili.modules.wallet.entity.dto.MemberWithdrawalMessage;
 import cn.lili.rocketmq.tags.MemberTagsEnum;
 import lombok.extern.slf4j.Slf4j;
@@ -168,8 +169,8 @@ public class MemberMessageListener implements RocketMQListener<MessageExt> {
             case MEMBER_RECHARGE:
                 for (MemberRechargeEvent memberRechargeEvent : memberRechargeEvents) {
                     try {
-                        Member member = JSONUtil.toBean(new String(messageExt.getBody()), Member.class);
-                        memberRechargeEvent.memberRecharge(member);
+                        Recharge recharge = JSONUtil.toBean(new String(messageExt.getBody()), Recharge.class);
+                        memberRechargeEvent.memberRecharge(recharge);
                     } catch (Exception e) {
                         log.error("会员{},在{}业务中，状态修改事件执行异常",
                                 new String(messageExt.getBody()),

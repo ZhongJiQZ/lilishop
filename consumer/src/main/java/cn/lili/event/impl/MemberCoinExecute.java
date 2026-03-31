@@ -1,6 +1,8 @@
 package cn.lili.event.impl;
 
 
+import cn.lili.common.enums.ResultCode;
+import cn.lili.common.exception.ServiceException;
 import cn.lili.event.MemberRechargeEvent;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.entity.enums.CoinTypeEnum;
@@ -17,6 +19,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 
 /**
  * 会员平台币
@@ -157,27 +161,38 @@ public class MemberCoinExecute implements MemberRechargeEvent
     }
 
     @Override
-    public void memberRecharge(Member member) {
-        //判断是否首次充值
-        if (isFirstPaidRecharge(member.getId())) {
-            //更新为VIP会员
-            member.setIsVip(1);
-            memberService.updateById(member);
-            //获取平台币设置
-            CoinSetting coinSetting = getCoinSetting();
-            //赠送50平台币
-            memberService.updateMemberCoin(coinSetting.getRecharge(), CoinTypeEnum.INCREASE.name(), member.getId(), "会员首次充值，赠送平台币" + coinSetting.getRecharge() + "币");
+    public void memberRecharge(Recharge recharge) {
+        Recharge checkRecharge = rechargeService.getById(recharge.getId());
+        if(checkRecharge == null) {
+            throw new ServiceException(ResultCode.PAY_NOT_EXIST_ORDER);
+        }
+        if(recharge.getRechargeType() == 1){
+            Member member = memberService.getById(recharge.getMemberId());
+            //判断用户是否首次成功会员充值
+            if (isFirstPaidRecharge(member.getId())) {
+                //更新为VIP会员
+                member.setIsVip(1);
+                memberService.updateById(member);
+                //获取平台币设置
+                CoinSetting coinSetting = getCoinSetting();
+                //赠送50平台币
+                memberService.updateMemberCoin(coinSetting.getRecharge(), CoinTypeEnum.INCREASE.name(), member.getId(), "会员首次VIP会员充值，赠送平台币" + coinSetting.getRecharge() + "币");
+            }
+        } else {
+            Double rechargeMoney = recharge.getRechargeMoney();
+            memberService.updateMemberCoin(BigDecimal.valueOf(rechargeMoney), CoinTypeEnum.INCREASE.name(), recharge.getMemberId(), "会员首次充值" + rechargeMoney + "币");
         }
     }
 
     /**
-     * 判断用户是否首次成功充值
+     * 判断用户是否首次成功会员充值
      * @param memberId 会员ID
-     * @return true=首次充值 false=非首次充值
+     * @return true=首次会员充值 false=非首次会员充值
      */
     private boolean isFirstPaidRecharge(String memberId) {
         long paidCount = rechargeService.count(new LambdaQueryWrapper<Recharge>()
                 .eq(Recharge::getMemberId, memberId)
+                .eq(Recharge::getRechargeType, 1)
                 .eq(Recharge::getPayStatus, PayStatusEnum.PAID.name())
         );
         // 已支付订单数量 ≤ 1 代表首次充值（包含当前刚支付的这笔）

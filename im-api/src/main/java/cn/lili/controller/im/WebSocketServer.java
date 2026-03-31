@@ -3,6 +3,7 @@ package cn.lili.controller.im;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import cn.lili.cache.Cache;
+import cn.lili.common.exception.ServiceException;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
@@ -190,6 +191,17 @@ public class WebSocketServer {
                     .set(ImTalk::getLastTalkTime, imMessage.getCreateTime())
                     .set(ImTalk::getLastMessageType, imMessage.getMessageType()));
                 imMessage.setText(SensitiveWordsFilter.filter(imMessage.getText()));
+
+                try {
+                    // 发送消息消耗平台币（自动识别 to 是会员ID / 店铺ID）
+                    String toId = messageOperation.getTo();
+                    imMessageService.deductPlatformCoin(authUser.getId(), toId);
+                } catch (ServiceException e) {
+                    // 余额不足 → 返回提示，不发送消息
+                    sendMessage(authUser.getId(), new MessageVO(MessageResultType.ERROR, e.getMessage()));
+                    return;
+                }
+
                 //发送消息
                 sendMessage(messageOperation.getTo(), new MessageVO(MessageResultType.MESSAGE, imMessage));
                 // 关键：同时推给发送方和接收方

@@ -26,6 +26,14 @@ public interface RechargeService extends IService<Recharge> {
     Recharge recharge(Double price);
 
     /**
+     * 创建会员充值订单
+     *
+     * @param price 价格
+     * @return 预存款充值记录
+     */
+    Recharge rechargeMember(Double price);
+
+    /**
      * 查询充值订单列表
      *
      * @param page            分页数据

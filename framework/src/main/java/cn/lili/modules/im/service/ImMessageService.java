@@ -63,4 +63,18 @@ public interface ImMessageService extends IService<ImMessage> {
      * 清空所有未读消息
      */
     void cleanUnreadMessage();
+
+    /**
+     * 扣除用户平台币（发送消息消耗）
+     * @param fromUserId 发送者ID
+     * @param toUserId 接受者ID
+     * @return 扣除成功/失败
+     */
+    boolean deductPlatformCoin(String fromUserId, String toUserId);
+
+    /**
+     * 获取当前用户的未读IM消息总数（试穿员消息入口用）
+     * @return 未读消息数
+     */
+    Long unreadMessageTotalCount();
 }

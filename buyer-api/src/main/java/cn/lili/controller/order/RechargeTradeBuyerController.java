@@ -47,4 +47,18 @@ public class RechargeTradeBuyerController {
         return ResultUtil.data(recharge);
     }
 
+    @PreventDuplicateSubmissions
+    @PostMapping("/member")
+    @Operation(summary = "充值会员")
+    @Parameters({
+            @Parameter(name = "price", description = "充值金额", required = true)
+    })
+    public ResultMessage<Recharge> rechargeMember(
+            @Max(value = 10000, message = "充值金额单次最多允许充值10000元")
+            @Min(value = 1, message = "充值金额单次最少充值金额为1元")
+            Double price) {
+        Recharge recharge = this.rechargeService.rechargeMember(price);
+        return ResultUtil.data(recharge);
+    }
+
 }

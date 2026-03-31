@@ -21,6 +21,7 @@ import cn.lili.modules.circle.service.CirclePostCommentService;
 import cn.lili.modules.circle.service.CirclePostService;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.mapper.MemberMapper;
+import cn.lili.modules.member.service.StoreCollectionService;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.service.StoreService;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
@@ -55,6 +56,8 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
     private MemberMapper memberMapper;
     @Autowired
     private StoreService storeService;
+    @Autowired
+    private StoreCollectionService storeCollectionService;
 
     @Override
     public IPage<CirclePostVO> queryByParams(CirclePostSearchParams circlePostSearchParams) {
@@ -72,6 +75,9 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
                 circlePostComment.setContent(SensitiveWordsFilter.filter(circlePostComment.getContent()));
             });
             circlePost.setCommentList(circlePostCommentByList);
+            if(StringUtils.isNotEmpty(circlePost.getStoreId())){
+                circlePost.setIsCollection(storeCollectionService.isCollection(circlePost.getStoreId()));
+            }
         });
         return circlePostList;
     }

@@ -86,4 +86,17 @@ public class StoreCompanyDTO {
     @Schema(description = "法人身份证照片")
     private String legalPhoto;
 
+    @Size(min = 2, max = 200)
+    @NotBlank(message = "店铺名称不能为空")
+    @Schema(description = "店铺名称")
+    private String storeName;
+
+    @Schema(description = "店铺logo")
+    private String storeLogo;
+
+    @Size(min = 6, max = 200)
+    @NotBlank(message = "店铺简介不能为空")
+    @Schema(description = "店铺简介")
+    private String storeDesc;
+
 }

@@ -1,6 +1,5 @@
 package cn.lili.controller.passport;
 
-import cn.lili.common.aop.annotation.DemoSite;
 import cn.lili.common.aop.annotation.PreventDuplicateSubmissions;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.vo.PageVO;
@@ -13,16 +12,15 @@ import cn.lili.modules.member.entity.vo.MemberSearchVO;
 import cn.lili.modules.member.entity.vo.MemberVO;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
-import cn.lili.modules.wallet.entity.dto.MemberWalletUpdateDTO;
-import cn.lili.modules.wallet.entity.enums.DepositServiceTypeEnum;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -109,6 +107,24 @@ public class MemberManagerController {
             content="运营后台手动减少积分:"+point;
         }
         if(memberService.updateMemberPoint(point, type, memberId, content)){
+            return ResultUtil.success();
+        }
+        return ResultUtil.error();
+    }
+
+    @PutMapping("/updateMemberCoin")
+    @Operation(summary = "修改用户平台币")
+    @Parameter(name = "memberId", description = "会员ID", required = true)
+    @Parameter(name = "coin", description = "平台币", required = true)
+    @Parameter(name = "type", description = "类型", required = true)
+    public ResultMessage<Object> updateMemberCoin(String memberId , BigDecimal coin, String type) {
+        String content="";
+        if (type.equals(PointTypeEnum.INCREASE.name())) {
+            content="运营后台手动增加平台币:"+coin;
+        }else{
+            content="运营后台手动减少平台币:"+coin;
+        }
+        if(memberService.updateMemberCoin(coin, type, memberId, content)){
             return ResultUtil.success();
         }
         return ResultUtil.error();
