@@ -38,7 +38,7 @@ public enum MemberTagsEnum {
     /**
      * 会员充值
      */
-    MEMBER_RECHARGE("会员充值"),
+//    MEMBER_RECHARGE("会员充值"),
     /**
      * 会员平台币变动
      */

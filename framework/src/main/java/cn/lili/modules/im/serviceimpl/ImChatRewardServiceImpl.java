@@ -17,11 +17,14 @@ import cn.lili.modules.im.mapper.ImChatRewardMapper;
 import cn.lili.modules.im.mapper.ImMemberIncomeMapper;
 import cn.lili.modules.im.service.ImChatRewardService;
 import cn.lili.modules.member.entity.dos.Member;
-import cn.lili.modules.member.entity.enums.CoinTypeEnum;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.enums.StoreStatusEnum;
 import cn.lili.modules.store.service.StoreService;
+import cn.lili.modules.wallet.entity.dos.MemberWallet;
+import cn.lili.modules.wallet.entity.dto.MemberWalletUpdateDTO;
+import cn.lili.modules.wallet.entity.enums.DepositServiceTypeEnum;
+import cn.lili.modules.wallet.service.MemberWalletService;
 import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -56,32 +59,43 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
     private ImMemberIncomeMapper memberIncomeMapper;
     @Autowired
     private StoreService storeService;
+    @Autowired
+    private MemberWalletService memberWalletService;
 
     @Override
     public void sendReward(ImChatRewardDTO dto) {
         //校验店铺
-        Store store = checkStore(dto.getToMemberId());
+        checkStore(dto.getToMemberId());
         String userId = UserContext.getCurrentUser().getId();
         // 1. 获取礼物
         ImChatGift gift = chatGiftMapper.selectById(dto.getGiftId());
         if (gift == null) throw new ServiceException(ResultCode.PARAMS_ERROR);
 
         BigDecimal totalCoin = gift.getCoinPrice().multiply(new BigDecimal(dto.getNum()));
+        Double money = totalCoin.doubleValue(); // 转为 Double 适配钱包接口
 
-        // 2. 判断余额
+        // ====================== 2. 获取会员钱包 ======================
         Member member = memberService.getById(userId);
-        BigDecimal userCoin = member.getCoin() == null ? BigDecimal.ZERO : member.getCoin();
-        // 判断余额
-        if (userCoin.compareTo(totalCoin) < 0) {
+        if (member == null) throw new ServiceException(ResultCode.USER_NOT_EXIST);
+        MemberWallet memberWallet = memberWalletService.save(userId, member.getUsername());
+
+        // 判断余额是否充足
+        if (memberWallet.getMemberWallet() < money) {
             throw new ServiceException(ResultCode.USER_COINS_INSUFFICIENT_BALANCE);
         }
 
-        // 3. 扣减发送人平台币
-        boolean deductSuccess = memberService.updateMemberCoin(totalCoin, CoinTypeEnum.REDUCE.name(), member.getId(), "会员打赏礼物：" + gift.getGiftName() + "，消耗平台币(" + totalCoin + "币)");
+        // ====================== 3. 扣减发送人余额 ======================
+        boolean deductSuccess = this.memberWalletService.reduce(new MemberWalletUpdateDTO(
+                money,
+                userId,
+                "会员打赏礼物：" + gift.getGiftName(),
+                DepositServiceTypeEnum.WALLET_REWARD.name()
+        ));
         if (!deductSuccess) {
-            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED);
+            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "打赏失败，余额扣减失败");
         }
 
+        // ====================== 4. 获取被打赏人 ======================
         // 被打赏人信息（店铺所属会员）
         Member toMember = memberService.getOne(new LambdaQueryWrapper<Member>()
                 .eq(Member::getStoreId, dto.getToMemberId())
@@ -90,19 +104,19 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
             throw new ServiceException(ResultCode.USER_NOT_EXIST, "被打赏用户不存在");
         }
 
-        // 给被打赏人增加平台币
-        boolean addSuccess = memberService.updateMemberCoin(
-                totalCoin,
-                CoinTypeEnum.INCREASE.name(),
+        // ====================== 5. 给被打赏人增加余额（Lilishop 标准方法） ======================
+        boolean addSuccess = this.memberWalletService.increase(new MemberWalletUpdateDTO(
+                money,
                 toMember.getId(),
-                "收到会员打赏礼物：" + gift.getGiftName() + "，获得平台币(" + totalCoin + "币)"
-        );
+                "收到会员打赏礼物：" + gift.getGiftName(),
+                DepositServiceTypeEnum.WALLET_REWARD.name()
+        ));
         if (!addSuccess) {
-            log.error("打赏功能——给被打赏人【{}】增加平台币失败，金额：{}", toMember.getId(), totalCoin);
-            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "打赏失败，平台币发放异常");
+            log.error("打赏功能——给被打赏人【{}】增加余额失败，金额：{}", toMember.getId(), money);
+            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "打赏失败，余额发放异常");
         }
 
-        // 5. 写入打赏记录
+        // ====================== 6. 写入打赏记录 ======================
         ImChatReward reward = new ImChatReward();
         reward.setGiftId(gift.getId());
         reward.setGiftName(gift.getGiftName());
@@ -118,7 +132,7 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
         reward.setToMemberAvatar(toMember.getFace());
         this.save(reward);
 
-        // 6. 更新试穿员收益
+        // ====================== 7. 更新试穿员收益 ======================
         ImMemberIncome income = memberIncomeMapper.selectOne(new LambdaQueryWrapper<ImMemberIncome>()
                 .eq(ImMemberIncome::getMemberId, toMember.getId()));
 
@@ -141,6 +155,8 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
                     .setSql("today_income = " + (isToday ? "today_income + " : "") + totalCoin)
             );
         }
+
+        log.info("会员【{}】打赏礼物成功，消费余额：{} 元", userId, money);
     }
 
     @Override

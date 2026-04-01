@@ -3,16 +3,21 @@ package cn.lili.modules.wallet.serviceimpl;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.common.enums.ResultCode;
-import cn.lili.common.event.TransactionCommitSendMQEvent;
 import cn.lili.common.exception.ServiceException;
 import cn.lili.common.properties.RocketmqCustomProperties;
 import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.utils.SnowFlake;
 import cn.lili.common.vo.PageVO;
+import cn.lili.modules.member.entity.dos.Member;
+import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.order.order.entity.enums.PayStatusEnum;
 import cn.lili.modules.order.trade.entity.vo.RechargeQueryVO;
 import cn.lili.modules.payment.entity.enums.PaymentMethodEnum;
+import cn.lili.modules.system.entity.dos.Setting;
+import cn.lili.modules.system.entity.dto.CoinSetting;
+import cn.lili.modules.system.entity.enums.SettingEnum;
+import cn.lili.modules.system.service.SettingService;
 import cn.lili.modules.wallet.entity.dos.Recharge;
 import cn.lili.modules.wallet.entity.dto.MemberWalletUpdateDTO;
 import cn.lili.modules.wallet.entity.enums.DepositServiceTypeEnum;
@@ -20,16 +25,17 @@ import cn.lili.modules.wallet.mapper.RechargeMapper;
 import cn.lili.modules.wallet.service.MemberWalletService;
 import cn.lili.modules.wallet.service.RechargeService;
 import cn.lili.mybatis.util.PageUtil;
-import cn.lili.rocketmq.tags.MemberTagsEnum;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.Objects;
 
@@ -48,6 +54,14 @@ public class RechargeServiceImpl extends ServiceImpl<RechargeMapper, Recharge> i
     @Autowired
     @Lazy
     private MemberWalletService memberWalletService;
+
+    @Autowired
+    private MemberService memberService;
+    /**
+     * 配置
+     */
+    @Autowired
+    private SettingService settingService;
 
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
@@ -133,10 +147,60 @@ public class RechargeServiceImpl extends ServiceImpl<RechargeMapper, Recharge> i
             this.updateById(recharge);
             //增加预存款余额
             memberWalletService.increase(new MemberWalletUpdateDTO(recharge.getRechargeMoney(), recharge.getMemberId(), "会员余额充值，充值单号为：" + recharge.getRechargeSn(), DepositServiceTypeEnum.WALLET_RECHARGE.name()));
+            //充值会员
+            rechargeMember(recharge);
             //发送会员充值信息
-            applicationEventPublisher.publishEvent(new TransactionCommitSendMQEvent("new member recharge", rocketmqCustomProperties.getMemberTopic(),
-                    MemberTagsEnum.MEMBER_RECHARGE.name(), recharge));
+//            applicationEventPublisher.publishEvent(new TransactionCommitSendMQEvent("new member recharge", rocketmqCustomProperties.getMemberTopic(),
+//                    MemberTagsEnum.MEMBER_RECHARGE.name(), recharge));
         }
+    }
+
+    /**
+     * 获取平台币设置
+     *
+     * @return 平台币设置
+     */
+    private CoinSetting getCoinSetting() {
+        Setting setting = settingService.get(SettingEnum.COIN_SETTING.name());
+        return new Gson().fromJson(setting.getSettingValue(), CoinSetting.class);
+    }
+
+    /**
+     * 充值会员
+     * @param recharge
+     */
+    public void rechargeMember(Recharge recharge) {
+        if(recharge.getRechargeType() == 1){
+            Member member = memberService.getById(recharge.getMemberId());
+            //判断用户是否首次成功会员充值
+            if (isFirstPaidRecharge(member.getId())) {
+                //更新为VIP会员
+                member.setIsVip(1);
+                memberService.updateById(member);
+                //获取平台币设置
+                CoinSetting coinSetting = getCoinSetting();
+                BigDecimal rechargeMoney = coinSetting.getRecharge();
+                //赠送50平台币（余额）
+//                memberService.updateMemberCoin(coinSetting.getRecharge(), CoinTypeEnum.INCREASE.name(), member.getId(), "会员首次VIP会员充值，赠送平台币" + coinSetting.getRecharge() + "币");
+                //增加50预存款余额
+                memberWalletService.increase(new MemberWalletUpdateDTO(rechargeMoney.doubleValue(), recharge.getMemberId(), "会员首次VIP会员充值，赠送平台币，充值单号为：" + recharge.getRechargeSn(), DepositServiceTypeEnum.WALLET_RECHARGE.name()));
+            }
+        }
+    }
+
+    /**
+     * 判断用户是否首次成功会员充值
+     * @param memberId 会员ID
+     * @return true=首次会员充值 false=非首次会员充值
+     */
+    private boolean isFirstPaidRecharge(String memberId) {
+        long paidCount = this.count(new LambdaQueryWrapper<Recharge>()
+                .eq(Recharge::getMemberId, memberId)
+                .eq(Recharge::getRechargeType, 1)
+                .eq(Recharge::getPayStatus, PayStatusEnum.PAID.name())
+        );
+        // 已支付订单数量 ≤ 1 代表首次充值（包含当前刚支付的这笔）
+        return paidCount <= 1;
     }
 
     @Override

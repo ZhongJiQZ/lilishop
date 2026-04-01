@@ -153,7 +153,7 @@ public enum ResultCode {
     CLERK_CURRENT_SUPPER(20032, "无法删除当前登录店员"),
     CANT_EDIT_CLERK_SHOPKEEPER(20033, "无法在店员管理编辑店员信息"),
     USER_MOBILE_REPEATABLE_ERROR(20034, "该手机号已存在"),
-    USER_COINS_INSUFFICIENT_BALANCE(20035, "用户平台币余额不足"),
+    USER_COINS_INSUFFICIENT_BALANCE(20035, "用户余额不足"),
     PLATFORM_COIN_OPERATION_FAILED(20036, "平台币操作失败，请稍后重试"),
     /**
      * 权限

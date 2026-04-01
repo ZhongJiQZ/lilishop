@@ -13,13 +13,17 @@ import cn.lili.modules.im.entity.dto.MessageQueryParams;
 import cn.lili.modules.im.mapper.ImMessageMapper;
 import cn.lili.modules.im.service.ImMessageService;
 import cn.lili.modules.member.entity.dos.Member;
-import cn.lili.modules.member.entity.enums.CoinTypeEnum;
 import cn.lili.modules.member.service.MemberService;
+import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.service.StoreService;
 import cn.lili.modules.system.entity.dos.Setting;
 import cn.lili.modules.system.entity.dto.CoinSetting;
 import cn.lili.modules.system.entity.enums.SettingEnum;
 import cn.lili.modules.system.service.SettingService;
+import cn.lili.modules.wallet.entity.dos.MemberWallet;
+import cn.lili.modules.wallet.entity.dto.MemberWalletUpdateDTO;
+import cn.lili.modules.wallet.entity.enums.DepositServiceTypeEnum;
+import cn.lili.modules.wallet.service.MemberWalletService;
 import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -52,6 +56,8 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
     private SettingService settingService;
     @Autowired
     private StoreService storeService;
+    @Autowired
+    private MemberWalletService memberWalletService;
 
     @Override
     public void read(String talkId, String accessToken) {
@@ -138,43 +144,56 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             Member fromMember = memberService.getById(fromUserId);
             if (fromMember == null) {
                 log.error("发送用户不存在，用户ID：{}", fromUserId);
-                return false;
+                throw new ServiceException(ResultCode.USER_NOT_EXIST, "发送用户不存在");
             }
 
-            // 2. 获取系统配置的消耗币数量
+            // 2. 获取系统配置的消耗金额
             CoinSetting coinSetting = getCoinSetting();
             if (coinSetting == null || coinSetting.getConsumer().compareTo(BigDecimal.ZERO) <= 0) {
-                log.info("平台未开启消息消耗平台币功能");
+                log.info("平台未开启消息消耗预存款功能");
                 return true;
             }
-            BigDecimal consumeCoin = coinSetting.getConsumer();
+            BigDecimal consumeMoney = coinSetting.getConsumer();
+            Double money = consumeMoney.doubleValue();
 
             // 3. 判断是否为商家/管理员 → 不扣费
             AuthUser authUser = UserContext.getCurrentUser();
             if (authUser != null) {
                 if (UserEnums.STORE.equals(authUser.getRole())) {
-                    log.info("商家发送消息，不消耗平台币");
+                    log.info("商家发送消息-卖家端，不消耗预存款");
                     return true;
+                } else if (UserEnums.MEMBER.equals(authUser.getRole())) {
+                    Store store = storeService.getById(fromUserId);
+                    if (store != null) {
+                        log.info("商家发送消息-买家端，不消耗预存款");
+                        return true;
+                    }
                 }
             }
 
-            // 4. 判断发送人余额是否充足
-            if (fromMember.getCoin() == null || fromMember.getCoin().compareTo(consumeCoin) < 0) {
-                throw new ServiceException(ResultCode.USER_COINS_INSUFFICIENT_BALANCE);
+            // ============================
+            // 4. 校验会员钱包余额（预存款）
+            // ============================
+            MemberWallet fromWallet = memberWalletService.getOne(new LambdaQueryWrapper<MemberWallet>().eq(MemberWallet::getMemberId, fromUserId));
+            if (fromWallet == null) {
+                fromWallet = memberWalletService.save(fromUserId, fromMember.getUsername());
+            }
+            if (fromWallet.getMemberWallet() < money) {
+                throw new ServiceException(ResultCode.USER_COINS_INSUFFICIENT_BALANCE, "预存款余额不足，无法发送消息");
             }
 
             // ============================
-            // 5. 发送人扣币（会员）
+            // 5. 发送人扣减预存款
             // ============================
-            boolean deductSuccess = memberService.updateMemberCoin(
-                    consumeCoin,
-                    CoinTypeEnum.REDUCE.name(),
+            boolean deductSuccess = memberWalletService.reduce(new MemberWalletUpdateDTO(
+                    money,
                     fromUserId,
-                    "会员发送IM消息消耗平台币(" + consumeCoin + "币)"
-            );
+                    "发送IM消息消耗预存款(" + money + "元)",
+                    DepositServiceTypeEnum.WALLET_REWARD.name()
+            ));
             if (!deductSuccess) {
-                log.error("会员【{}】发送IM消息扣减平台币失败", fromUserId);
-                return false;
+                log.error("会员【{}】发送IM消息扣减预存款失败", fromUserId);
+                throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "消息发送失败，预存款扣减异常");
             }
 
             // ============================
@@ -182,13 +201,13 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             // ============================
             String receiveMemberId = null;
 
-            // 情况A：toId 是 会员ID
+            // 情况A：toId 是会员ID
             Member toMember = memberService.getById(toUserId);
             if (toMember != null) {
                 receiveMemberId = toMember.getId();
                 log.info("接收方是会员：{}", receiveMemberId);
             }
-            // 情况B：toId 是 店铺ID → 查询店铺对应的会员
+            // 情况B：toId 是店铺ID → 查询店主会员
             else {
                 Member storeOwner = memberService.getOne(new LambdaQueryWrapper<Member>()
                         .eq(Member::getStoreId, toUserId)
@@ -200,29 +219,35 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             }
 
             // ============================
-            // 7. 给正确的接收方会员加币
+            // 7. 给接收方增加预存款
             // ============================
             if (StrUtil.isNotBlank(receiveMemberId)) {
-                memberService.updateMemberCoin(
-                        consumeCoin,
-                        CoinTypeEnum.INCREASE.name(),
+                boolean addSuccess = memberWalletService.increase(new MemberWalletUpdateDTO(
+                        money,
                         receiveMemberId,
-                        "接收IM消息获得平台币(" + consumeCoin + "币)"
-                );
-                log.info("接收方会员【{}】获得平台币：{}", receiveMemberId, consumeCoin);
+                        "接收IM消息获得预存款(" + money + "元)",
+                        DepositServiceTypeEnum.WALLET_REWARD.name()
+                ));
+
+                if (addSuccess) {
+                    log.info("接收方会员【{}】获得预存款：{} 元", receiveMemberId, money);
+                } else {
+                    log.error("给接收方【{}】增加预存款失败", receiveMemberId);
+                }
             } else {
-                log.warn("未找到有效接收会员，toId={}，不加币", toUserId);
+                log.warn("未找到有效接收会员，toId={}，不加款", toUserId);
             }
 
-            log.info("会员【{}】发送消息成功，扣除平台币：{}", fromUserId, consumeCoin);
+            log.info("会员【{}】发送消息成功，扣除预存款：{} 元", fromUserId, money);
             return true;
 
         } catch (ServiceException e) {
-            log.error("发送IM消息扣减平台币异常：{}", e.getMessage());
-            throw e;
+            String errorMsg = StrUtil.isBlank(e.getMessage()) ? "消息发送失败" : e.getMessage();
+            log.error("发送IM消息扣减预存款异常：{}", e.getMessage());
+            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, errorMsg);
         } catch (Exception e) {
-            log.error("发送IM消息扣减平台币系统异常", e);
-            return false;
+            log.error("发送IM消息扣减预存款系统异常", e);
+            throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "消息发送异常，请稍后重试");
         }
     }
 
