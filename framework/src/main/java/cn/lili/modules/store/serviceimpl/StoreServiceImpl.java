@@ -440,9 +440,11 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
 
     @Override
     public IPage<StoreTradeRankingVO> getTradeRanking(PageVO page) {
-        LambdaQueryWrapper<StoreTradeRankingVO> wrapper = new LambdaQueryWrapper<>();
+        QueryWrapper<Store> wrapper = new QueryWrapper<>();
         // 只查询正常营业的店铺
-        wrapper.eq(Store::getStoreDisable, StoreStatusEnum.OPEN.value());
+        wrapper.eq("store_disable", StoreStatusEnum.OPEN.value());
+        wrapper.notLike("s.member_name", "template");
+        wrapper.notLike("s.store_name", "template");
 
         // 1. 查询店铺排行榜
         IPage<StoreTradeRankingVO> resultPage = this.baseMapper.getStoreTradeRankingList(PageUtil.initPage(page), wrapper);

@@ -4,7 +4,7 @@ import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.vos.StoreTradeRankingVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
@@ -66,5 +66,5 @@ public interface StoreMapper extends BaseMapper<Store> {
             "${ew.customSqlSegment} " +
             "GROUP BY s.id " +
             "ORDER BY order_count DESC")
-    IPage<StoreTradeRankingVO> getStoreTradeRankingList(Page<Object> page, @Param(Constants.WRAPPER) LambdaQueryWrapper<StoreTradeRankingVO> queryWrapper);
+    IPage<StoreTradeRankingVO> getStoreTradeRankingList(Page<Object> page, @Param(Constants.WRAPPER) QueryWrapper<Store> queryWrapper);
 }

@@ -198,8 +198,9 @@ public class WebSocketServer {
                     imMessageService.deductPlatformCoin(authUser.getId(), toId);
                 } catch (ServiceException e) {
                     // 余额不足 → 返回提示，不发送消息
-                    log.error("余额不足 → 返回提示，不发送消息：{}", e.getMessage());
-                    sendMessage(authUser.getId(), new MessageVO(MessageResultType.ERROR, e.getMessage()));
+                    log.error("余额不足 → 返回提示，不发送消息：{}", e.getMsg());
+                    imMessage.setText(e.getMsg());
+                    sendMessage(authUser.getId(), new MessageVO(MessageResultType.ERROR, imMessage));
                     return;
                 }
 

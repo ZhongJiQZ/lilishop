@@ -9,8 +9,10 @@ import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.sensitive.SensitiveWordsFilter;
 import cn.lili.common.utils.StringUtils;
 import cn.lili.modules.im.entity.dos.ImMessage;
+import cn.lili.modules.im.entity.dos.ImTalk;
 import cn.lili.modules.im.entity.dto.MessageQueryParams;
 import cn.lili.modules.im.mapper.ImMessageMapper;
+import cn.lili.modules.im.mapper.ImTalkMapper;
 import cn.lili.modules.im.service.ImMessageService;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.service.MemberService;
@@ -58,6 +60,8 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
     private StoreService storeService;
     @Autowired
     private MemberWalletService memberWalletService;
+    @Autowired
+    private ImTalkMapper talkMapper;
 
     @Override
     public void read(String talkId, String accessToken) {
@@ -105,26 +109,26 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             message.setText(SensitiveWordsFilter.filter(message.getText()));
         });
         ListSort(messageList);
-        readMessage(messageList);
+        readMessage(messageList, messageQueryParams);
         return messageList;
     }
 
     @Override
     public Long unreadMessageCount() {
         AuthUser currentUser = UserContext.getCurrentUser();
-        if(currentUser == null){
+        if (currentUser == null) {
             throw new ServiceException(ResultCode.USER_NOT_LOGIN);
         }
-        return this.count(new LambdaQueryWrapper<ImMessage>().eq(ImMessage::getToUser,currentUser.getId()).eq(ImMessage::getIsRead,false));
+        return this.count(new LambdaQueryWrapper<ImMessage>().eq(ImMessage::getToUser, currentUser.getId()).eq(ImMessage::getIsRead, false));
     }
 
     @Override
     public void cleanUnreadMessage() {
         AuthUser currentUser = UserContext.getCurrentUser();
-        if(currentUser == null){
+        if (currentUser == null) {
             throw new ServiceException(ResultCode.USER_NOT_LOGIN);
         }
-        this.update(new LambdaUpdateWrapper<ImMessage>().eq(ImMessage::getToUser,currentUser.getId()).set(ImMessage::getIsRead,true));
+        this.update(new LambdaUpdateWrapper<ImMessage>().eq(ImMessage::getToUser, currentUser.getId()).set(ImMessage::getIsRead, true));
     }
 
     /**
@@ -196,54 +200,12 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
                 throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "消息发送失败，预存款扣减异常");
             }
 
-            // ============================
-            // 6. 自动识别接收方：会员ID / 店铺ID
-            // ============================
-            String receiveMemberId = null;
-
-            // 情况A：toId 是会员ID
-            Member toMember = memberService.getById(toUserId);
-            if (toMember != null) {
-                receiveMemberId = toMember.getId();
-                log.info("接收方是会员：{}", receiveMemberId);
-            }
-            // 情况B：toId 是店铺ID → 查询店主会员
-            else {
-                Member storeOwner = memberService.getOne(new LambdaQueryWrapper<Member>()
-                        .eq(Member::getStoreId, toUserId)
-                        .last("LIMIT 1"));
-                if (storeOwner != null) {
-                    receiveMemberId = storeOwner.getId();
-                    log.info("接收方是店铺{}，对应会员：{}", toUserId, receiveMemberId);
-                }
-            }
-
-            // ============================
-            // 7. 给接收方增加预存款
-            // ============================
-            if (StrUtil.isNotBlank(receiveMemberId)) {
-                boolean addSuccess = memberWalletService.increase(new MemberWalletUpdateDTO(
-                        money,
-                        receiveMemberId,
-                        "接收IM消息获得预存款(" + money + "元)",
-                        DepositServiceTypeEnum.WALLET_REWARD.name()
-                ));
-
-                if (addSuccess) {
-                    log.info("接收方会员【{}】获得预存款：{} 元", receiveMemberId, money);
-                } else {
-                    log.error("给接收方【{}】增加预存款失败", receiveMemberId);
-                }
-            } else {
-                log.warn("未找到有效接收会员，toId={}，不加款", toUserId);
-            }
-
             log.info("会员【{}】发送消息成功，扣除预存款：{} 元", fromUserId, money);
             return true;
 
         } catch (ServiceException e) {
-            String errorMsg = StrUtil.isBlank(e.getMessage()) ? "消息发送失败" : e.getMessage();
-            log.error("发送IM消息扣减预存款异常：{}", e.getMessage());
+            String errorMsg = StrUtil.isBlank(e.getMsg()) ? "消息发送失败" : e.getMsg();
+            log.error("发送IM消息扣减预存款异常：{}", e.getMsg());
             throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, errorMsg);
         } catch (Exception e) {
             log.error("发送IM消息扣减预存款系统异常", e);
@@ -307,20 +269,38 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
      *
      * @param messageList 消息列表
      */
-    private void readMessage(List<ImMessage> messageList) {
+    private void readMessage(List<ImMessage> messageList, MessageQueryParams messageQueryParams) {
         if (!messageList.isEmpty()) {
             //判断用户类型
             AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
+            Member member = memberService.getById(authUser.getId());
             String toUserId = "";
-            if(UserEnums.MEMBER.equals(authUser.getRole())){
-                toUserId = authUser.getId();
-            }else if(UserEnums.STORE.equals(authUser.getRole())){
+            Boolean self = false;//自身消息
+            if (UserEnums.MEMBER.equals(authUser.getRole())) {
+                ImTalk talk = talkMapper.selectById(messageQueryParams.getTalkId());
+                if (member != null) {
+                    if ((talk.getUserId1().equals(member.getId()) && talk.getUserId2().equals(member.getStoreId())) || talk.getUserId1().equals(member.getStoreId()) && talk.getUserId2().equals(member.getId())) {
+                        self = true;
+                    }
+                }
+                if (member != null && member.getHaveStore() && member.getStoreId() != null) {
+                    toUserId = member.getStoreId();
+                } else {
+                    toUserId = authUser.getId();
+                }
+            } else if (UserEnums.STORE.equals(authUser.getRole())) {
                 toUserId = authUser.getStoreId();
             }
             //发送给自己的未读信息进行已读操作
             for (ImMessage imMessage : messageList) {
-                if(Boolean.FALSE.equals(imMessage.getIsRead()) && imMessage.getToUser().equals(toUserId)){
-                    imMessage.setIsRead(true);
+                if (self) {
+                    if (Boolean.FALSE.equals(imMessage.getIsRead()) && (imMessage.getToUser().equals(member.getId()) || imMessage.getToUser().equals(member.getStoreId()))) {
+                        imMessage.setIsRead(true);
+                    }
+                } else {
+                    if (Boolean.FALSE.equals(imMessage.getIsRead()) && imMessage.getToUser().equals(toUserId)) {
+                        imMessage.setIsRead(true);
+                    }
                 }
             }
         }
