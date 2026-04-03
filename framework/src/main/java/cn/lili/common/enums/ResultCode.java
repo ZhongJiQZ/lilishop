@@ -417,12 +417,12 @@ public enum ResultCode {
      * 店铺
      */
 
-    STORE_NOT_EXIST(50001, "此店铺不存在"),
+    STORE_NOT_EXIST(50001, "此试穿员不存在"),
     STORE_NAME_EXIST_ERROR(50002, "店铺名称已存在!"),
     STORE_APPLY_DOUBLE_ERROR(50003, "已经拥有店铺!"),
     STORE_NOT_OPEN(50004, "该会员未开通店铺"),
     STORE_NOT_LOGIN_ERROR(50005, "未登录店铺"),
-    STORE_CLOSE_ERROR(50006, "店铺关闭，请联系管理员"),
+    STORE_CLOSE_ERROR(50006, "试穿员已关闭，请联系管理员"),
     STORE_DELIVER_GOODS_ADDRESS(50007,"请填写商家发货地址"),
     FREIGHT_TEMPLATE_NOT_EXIST(50010, "当前模版不存在"),
     STORE_STATUS_ERROR(50011, "店铺在申请中或审核中，请勿重复操作"),

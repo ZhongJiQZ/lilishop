@@ -88,7 +88,7 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
         boolean deductSuccess = this.memberWalletService.reduce(new MemberWalletUpdateDTO(
                 money,
                 userId,
-                "会员打赏礼物：" + gift.getGiftName() + "(" + gift.getCoinPrice() + "元)",
+                "会员打赏礼物-" + gift.getGiftName() + ":" + gift.getCoinPrice().doubleValue(),
                 DepositServiceTypeEnum.WALLET_REWARD_GIFT.name()
         ));
         if (!deductSuccess) {
@@ -108,7 +108,7 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
         boolean addSuccess = this.memberWalletService.increase(new MemberWalletUpdateDTO(
                 money,
                 toMember.getId(),
-                "收到会员打赏礼物：" + gift.getGiftName() + "(" + gift.getCoinPrice() + "元)",
+                "收到会员打赏礼物-" + gift.getGiftName() + ":" + gift.getCoinPrice().doubleValue(),
                 DepositServiceTypeEnum.WALLET_REWARD_GIFT_RECEIVE.name()
         ));
         if (!addSuccess) {

@@ -184,7 +184,7 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             boolean deductSuccess = memberWalletService.reduce(new MemberWalletUpdateDTO(
                     money,
                     fromUserId,
-                    "发送IM消息消耗预存款(" + money + "元)",
+                    "发送消息:" + money,
                     DepositServiceTypeEnum.WALLET_SEND_IM.name()
             ));
             if (!deductSuccess) {
