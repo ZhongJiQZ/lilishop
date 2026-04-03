@@ -225,3 +225,29 @@ ALTER TABLE li_member
 
 -- 付款协议
 INSERT INTO `lilishop`.`li_article` (`id`, `create_by`, `create_time`, `delete_flag`, `update_by`, `update_time`, `category_id`, `content`, `sort`, `title`, `type`, `open_status`) VALUES (1371779927900160001, 'admin', '2021-03-16 06:06:36', b'0', 'admin', '2021-11-04 19:10:47', '1371779742369316864', '<p>APP隐私协议<br />\n以下隐私协议是xxx公司（以下简称\"我们\"） 对用户隐私保护的许诺，请您务必仔细阅读，以了解我们关于管理您个人信息的情况。本隐私协议使用协议\"的重要组成部分，与其具有同等法律效力。</p>', 1, '付费协议', 'PAYMENT_AGREEMENT', b'1');
+
+-- 会员邀请佣金记录表
+CREATE TABLE `li_member_commission` (
+    `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    `order_sn` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '' COMMENT '订单编号',
+    `order_price` decimal(10,2) DEFAULT '0.00' COMMENT '订单金额',
+    `member_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '' COMMENT '消费会员ID',
+    `member_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '' COMMENT '消费会员名称',
+    `commission_member_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '' COMMENT '佣金获取会员ID(邀请人ID)',
+    `commission` decimal(10,2) DEFAULT '0.00' COMMENT '佣金金额',
+    `commission_rate` decimal(10,2) DEFAULT '0.00' COMMENT '佣金比例 0.10=10%',
+    `is_settled` tinyint(1) DEFAULT '0' COMMENT '是否结算 0未结算 1已结算',
+    `settle_time` datetime DEFAULT NULL COMMENT '结算时间',
+    `create_by`     VARCHAR(255)     DEFAULT NULL COMMENT '创建者',
+    `create_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+    `delete_flag`   BIT(1)           DEFAULT b'0' COMMENT '删除标志（0未删 1已删）',
+    `update_by`     VARCHAR(255)     DEFAULT NULL COMMENT '更新者',
+    `update_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    KEY `idx_order_sn` (`order_sn`),
+    KEY `idx_commission_member_id` (`commission_member_id`),
+    KEY `idx_member_id` (`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='会员邀请佣金记录表';
+
+-- 邀请佣金设置
+INSERT INTO `lilishop`.`li_setting` (`id`, `create_by`, `create_time`, `delete_flag`, `update_by`, `update_time`, `setting_value`) VALUES ('INVITE_COMMISSION_SETTING', 'admin', '2021-02-21 09:34:41.153000', b'0', 'admin', '2021-02-26 08:54:01.267000', '{\"isOpen\":true,\"commissionRate\":0.10}');

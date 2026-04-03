@@ -9,10 +9,7 @@ import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.entity.dto.ManagerMemberEditDTO;
 import cn.lili.modules.member.entity.dto.MemberAddDTO;
 import cn.lili.modules.member.entity.dto.MemberEditDTO;
-import cn.lili.modules.member.entity.vo.MemberSearchVO;
-import cn.lili.modules.member.entity.vo.MemberVO;
-import cn.lili.modules.member.entity.vo.QRCodeLoginSessionVo;
-import cn.lili.modules.member.entity.vo.QRLoginResultVo;
+import cn.lili.modules.member.entity.vo.*;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import jakarta.validation.constraints.NotNull;
@@ -334,4 +331,11 @@ public interface MemberService extends IService<Member> {
     Boolean updateMemberCoin(BigDecimal coin, String type, String memberId, String content);
 
     void addInviter(@NotNull(message = "邀请码为空") String inviterCode);
+
+    /**
+     * 获取会员推广中心数据
+     * @param type 时间类型：all/week/month
+     * @return 推广统计数据
+     */
+    MemberPromotionVO getMemberPromotionData(String type);
 }

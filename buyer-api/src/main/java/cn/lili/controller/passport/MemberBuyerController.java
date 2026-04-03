@@ -10,6 +10,7 @@ import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.entity.dto.MemberEditDTO;
 import cn.lili.modules.member.entity.enums.QRCodeLoginSessionStatusEnum;
+import cn.lili.modules.member.entity.vo.MemberPromotionVO;
 import cn.lili.modules.member.entity.vo.QRLoginResultVo;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.sms.SmsUtil;
@@ -19,6 +20,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,7 +28,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -212,7 +213,15 @@ public class MemberBuyerController {
 
     }
 
-   
+    @Operation(summary = "获取推广中心数据")
+    @Parameters({
+            @Parameter(name = "type", description = "时间类型：all-全部, week-本周, month-本月", required = true)
+    })
+    @GetMapping("/promotion")
+    public ResultMessage<MemberPromotionVO> getPromotionData(
+            @RequestParam(defaultValue = "all") String type) {
+        return ResultUtil.data(memberService.getMemberPromotionData(type));
+    }
 
     @Operation(summary = "获取当前登录用户接口")
     @GetMapping

@@ -21,7 +21,11 @@ import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.utils.CurrencyUtil;
 import cn.lili.common.utils.SnowFlake;
 import cn.lili.modules.goods.entity.dto.GoodsCompleteMessage;
+import cn.lili.modules.member.entity.dos.Member;
+import cn.lili.modules.member.entity.dos.MemberCommission;
 import cn.lili.modules.member.entity.dto.MemberAddressDTO;
+import cn.lili.modules.member.mapper.MemberMapper;
+import cn.lili.modules.member.service.MemberCommissionService;
 import cn.lili.modules.order.cart.entity.dto.TradeDTO;
 import cn.lili.modules.order.cart.entity.enums.DeliveryMethodEnum;
 import cn.lili.modules.order.order.aop.OrderLogPoint;
@@ -41,6 +45,7 @@ import cn.lili.modules.store.service.StoreDetailService;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
 import cn.lili.modules.system.entity.dos.Logistics;
 import cn.lili.modules.system.entity.dos.Setting;
+import cn.lili.modules.system.entity.dto.InviteCommissionSetting;
 import cn.lili.modules.system.entity.dto.OrderSetting;
 import cn.lili.modules.system.entity.enums.SettingEnum;
 import cn.lili.modules.system.entity.vo.Traces;
@@ -63,6 +68,9 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -77,9 +85,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -169,6 +176,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Autowired
     private SettingService settingService;
+
+    @Autowired
+    private MemberMapper memberMapper;
+
+    @Autowired
+    private MemberCommissionService memberCommissionService;
 
 
     @Override
@@ -451,6 +464,67 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         OrderLog orderLog = new OrderLog(orderSn, "-1", UserEnums.SYSTEM.getRole(), "系统操作", message);
         orderLogService.save(orderLog);
 
+        // 订单支付成功 → 给邀请人生成佣金
+        createOrderCommission(order);
+    }
+
+    /**
+     * 获取邀请佣金设置
+     */
+    private InviteCommissionSetting getInviteCommissionSetting() {
+        Setting setting = settingService.get(SettingEnum.INVITE_COMMISSION_SETTING.name());
+        if (setting == null || CharSequenceUtil.isEmpty(setting.getSettingValue())) {
+            return null;
+        }
+        return new Gson().fromJson(setting.getSettingValue(), InviteCommissionSetting.class);
+    }
+
+    /**
+     * 订单支付成功 → 生成邀请佣金（下级消费10%给上级）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void createOrderCommission(Order order) {
+        // 1. 获取配置，不存在直接结束
+        InviteCommissionSetting setting = getInviteCommissionSetting();
+        if (setting == null) {
+            log.info("未找到邀请佣金配置，订单{}不计算佣金", order.getSn());
+            return;
+        }
+
+        // 2. 未开启则结束
+        if (!Boolean.TRUE.equals(setting.getIsOpen())) {
+            log.info("邀请佣金已关闭，订单{}不计算佣金", order.getSn());
+            return;
+        }
+
+        // 3. 会员不存在则结束
+        Member member = memberMapper.selectById(order.getMemberId());
+        if (member == null) {
+            return;
+        }
+
+        // 4. 无邀请人则结束
+        if (CharSequenceUtil.isEmpty(member.getInviterId())) {
+            return;
+        }
+
+        // 5. 计算佣金
+        BigDecimal orderPrice = BigDecimal.valueOf(order.getFlowPrice());
+        BigDecimal commissionRate = setting.getCommissionRate();
+        BigDecimal commission = orderPrice.multiply(commissionRate);
+
+        // 6. 保存佣金记录
+        MemberCommission commissionDO = new MemberCommission();
+        commissionDO.setOrderSn(order.getSn());
+        commissionDO.setOrderPrice(orderPrice);
+        commissionDO.setMemberId(order.getMemberId());
+        commissionDO.setMemberName(order.getMemberName());
+        commissionDO.setCommissionMemberId(member.getInviterId());
+        commissionDO.setCommission(commission);
+        commissionDO.setCommissionRate(commissionRate);
+        commissionDO.setIsSettled(0);
+
+        memberCommissionService.save(commissionDO);
     }
 
     @Override
@@ -659,6 +733,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             //发送订单变更mq消息
             rocketMQTemplate.asyncSend(destination, JSONUtil.toJsonStr(goodsCompleteMessageList), RocketmqSendCallbackBuilder.commonCallback());
         }
+
+        // 订单完成 → 结算邀请佣金
+        LambdaUpdateWrapper<MemberCommission> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(MemberCommission::getOrderSn, orderSn)
+                .set(MemberCommission::getIsSettled, 1)
+                .set(MemberCommission::getSettleTime, new Date());
+        memberCommissionService.update(updateWrapper);
     }
 
     @Override

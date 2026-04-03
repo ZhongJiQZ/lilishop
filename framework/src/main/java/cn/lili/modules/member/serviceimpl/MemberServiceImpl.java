@@ -1,7 +1,7 @@
 package cn.lili.modules.member.serviceimpl;
 
 
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.cache.Cache;
@@ -29,11 +29,9 @@ import cn.lili.modules.member.entity.dto.*;
 import cn.lili.modules.member.entity.enums.CoinTypeEnum;
 import cn.lili.modules.member.entity.enums.PointTypeEnum;
 import cn.lili.modules.member.entity.enums.QRCodeLoginSessionStatusEnum;
-import cn.lili.modules.member.entity.vo.MemberSearchVO;
-import cn.lili.modules.member.entity.vo.MemberVO;
-import cn.lili.modules.member.entity.vo.QRCodeLoginSessionVo;
-import cn.lili.modules.member.entity.vo.QRLoginResultVo;
+import cn.lili.modules.member.entity.vo.*;
 import cn.lili.modules.member.mapper.MemberMapper;
+import cn.lili.modules.member.service.MemberCommissionService;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.member.token.MemberTokenGenerate;
 import cn.lili.modules.member.token.StoreTokenGenerate;
@@ -43,6 +41,9 @@ import cn.lili.modules.order.order.service.OrderService;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.enums.StoreStatusEnum;
 import cn.lili.modules.store.service.StoreService;
+import cn.lili.modules.wallet.entity.dos.MemberWithdrawApply;
+import cn.lili.modules.wallet.entity.enums.WithdrawStatusEnum;
+import cn.lili.modules.wallet.service.MemberWithdrawApplyService;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.MemberTagsEnum;
@@ -63,6 +64,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -117,6 +119,10 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
     private Cache cache;
     @Autowired
     private OrderService orderService;
+    @Autowired
+    private MemberWithdrawApplyService memberWithdrawApplyService;
+    @Autowired
+    private MemberCommissionService memberCommissionService;
 
     @Override
     public Member findByUsername(String userName) {
@@ -134,65 +140,9 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
             if(member != null && !member.getDisabled()){
                 throw new ServiceException(ResultCode.USER_STATUS_ERROR);
             }
-            // 获取代理统计信息：推荐人数、消费人数、各消费金额
-            getAgentStatistics(member);
             return member;
         }
         throw new ServiceException(ResultCode.USER_NOT_LOGIN);
-    }
-
-    /**
-     * 获取代理统计信息：推荐人数、消费人数、各消费金额
-     * @param member 当前登录会员
-     */
-    private void getAgentStatistics(Member member) {
-        // 1. 获取当前会员ID（代理ID）
-        String memberId = member.getId();
-
-        // 2. 查询【该会员推荐的所有下级会员】
-        // 条件：inviterId = 当前会员ID
-        LambdaQueryWrapper<Member> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Member::getInviterId, memberId);
-        List<Member> recommendMembers = this.list(queryWrapper);
-
-        // 3. 推荐总人数
-        int recommendCount = recommendMembers.size();
-        member.setRecommendCount(recommendCount);
-
-        if (CollectionUtil.isEmpty(recommendMembers)) {
-            // 没有推荐人，直接赋值0
-            member.setConsumeCount(0);
-            member.setConsumeAmount(new BigDecimal("0"));
-            return;
-        }
-
-        // 4. 提取所有推荐人的会员ID
-        List<String> recommendMemberIds = recommendMembers.stream()
-                .map(Member::getId)
-                .collect(Collectors.toList());
-
-        // 5. 查询这些推荐人的【有效订单】（已支付）
-        LambdaQueryWrapper<Order> orderQuery = new LambdaQueryWrapper<>();
-        orderQuery.in(Order::getMemberId, recommendMemberIds);
-        // 只统计已支付订单
-        orderQuery.eq(Order::getPayStatus, PayStatusEnum.PAID.name());
-        List<Order> orderList = orderService.list(orderQuery);
-
-        // 6. 统计【消费人数】（去重）
-        Set<String> consumeMemberIds = orderList.stream()
-                .map(Order::getMemberId)
-                .collect(Collectors.toSet());
-        int consumeCount = consumeMemberIds.size();
-
-        // 7. 统计【总消费金额】
-        BigDecimal totalConsumeAmount = orderList.stream()
-                .map(Order::getFlowPrice)
-                .map(BigDecimal::valueOf)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // 8. 设置到 member 对象返回
-        member.setConsumeCount(consumeCount);
-        member.setConsumeAmount(totalConsumeAmount);
     }
 
     @Override
@@ -1002,6 +952,173 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         member.setInviterCode(inviterCode);
         member.setInviterName(inviter.getNickName());
         this.getBaseMapper().updateById(member);
+    }
+
+    @Override
+    public MemberPromotionVO getMemberPromotionData(String type) {
+        AuthUser authUser = UserContext.getCurrentUser();
+        if (authUser == null || CharSequenceUtil.isEmpty(authUser.getId())) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+        String currentMemberId = authUser.getId();
+
+        MemberPromotionVO result = new MemberPromotionVO();
+
+        // 1. 查询我邀请的所有下级
+        LambdaQueryWrapper<Member> inviteWrapper = Wrappers.lambdaQuery();
+        inviteWrapper.eq(Member::getInviterId, currentMemberId);
+        List<Member> inviteMemberList = this.list(inviteWrapper);
+        result.setTotalInviteCount(inviteMemberList == null ? 0 : inviteMemberList.size());
+
+        // 无下级直接返回
+        if (CollUtil.isEmpty(inviteMemberList)) {
+            result.setWeekNewInviteCount(0);
+            result.setTotalConsumeAmount(BigDecimal.ZERO);
+            result.setWeekNewConsumeAmount(BigDecimal.ZERO);
+            result.setTotalCommission(BigDecimal.ZERO);
+            result.setCanWithdrawAmount(BigDecimal.ZERO);
+            result.setInviteList(Collections.emptyList());
+            return result;
+        }
+
+        List<String> inviteMemberIds = inviteMemberList.stream().map(Member::getId).collect(Collectors.toList());
+
+        // ===================== 时间范围 =====================
+        // 本周开始/结束
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        Date weekStart = calendar.getTime();
+
+        calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
+        calendar.set(Calendar.HOUR_OF_DAY, 23);
+        calendar.set(Calendar.MINUTE, 59);
+        calendar.set(Calendar.SECOND, 59);
+        Date weekEnd = calendar.getTime();
+
+        // 本周新增邀请人数
+        int weekNewInviteCount = 0;
+        for (Member member : inviteMemberList) {
+            if (member.getCreateTime() != null
+                    && member.getCreateTime().after(weekStart)
+                    && member.getCreateTime().before(weekEnd)) {
+                weekNewInviteCount++;
+            }
+        }
+        result.setWeekNewInviteCount(weekNewInviteCount);
+
+        // ===================== 构建订单查询条件 =====================
+        LambdaQueryWrapper<Order> orderWrapper = Wrappers.lambdaQuery();
+        orderWrapper.in(Order::getMemberId, inviteMemberIds);
+        orderWrapper.eq(Order::getPayStatus, PayStatusEnum.PAID.name());
+        orderWrapper.eq(Order::getDeleteFlag, false);
+
+        // 类型：全部/本周/本月
+        if ("week".equals(type)) {
+            orderWrapper.ge(Order::getPaymentTime, weekStart).le(Order::getPaymentTime, weekEnd);
+        } else if ("month".equals(type)) {
+            Calendar monthCal = Calendar.getInstance();
+            monthCal.set(Calendar.DAY_OF_MONTH, 1);
+            monthCal.set(Calendar.HOUR_OF_DAY, 0);
+            monthCal.set(Calendar.MINUTE, 0);
+            monthCal.set(Calendar.SECOND, 0);
+            Date monthStart = monthCal.getTime();
+
+            monthCal.set(Calendar.DAY_OF_MONTH, monthCal.getActualMaximum(Calendar.DAY_OF_MONTH));
+            monthCal.set(Calendar.HOUR_OF_DAY, 23);
+            monthCal.set(Calendar.MINUTE, 59);
+            monthCal.set(Calendar.SECOND, 59);
+            Date monthEnd = monthCal.getTime();
+            orderWrapper.ge(Order::getPaymentTime, monthStart).le(Order::getPaymentTime, monthEnd);
+        }
+
+        List<Order> orderList = orderService.list(orderWrapper);
+
+        // ===================== 总消费金额 =====================
+        BigDecimal totalConsumeAmount = BigDecimal.ZERO;
+        if (CollUtil.isNotEmpty(orderList)) {
+            totalConsumeAmount = orderList.stream()
+                    .map(o -> BigDecimal.valueOf(o.getFlowPrice()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        result.setTotalConsumeAmount(totalConsumeAmount);
+
+        // ===================== 本周消费 =====================
+        List<Order> weekOrderList = orderService.list(Wrappers.lambdaQuery(Order.class)
+                .in(Order::getMemberId, inviteMemberIds)
+                .eq(Order::getPayStatus, PayStatusEnum.PAID.name())
+                .eq(Order::getDeleteFlag, false)
+                .ge(Order::getPaymentTime, weekStart)
+                .le(Order::getPaymentTime, weekEnd));
+
+        BigDecimal weekConsumeAmount = BigDecimal.ZERO;
+        if (CollUtil.isNotEmpty(weekOrderList)) {
+            weekConsumeAmount = weekOrderList.stream()
+                    .map(o -> BigDecimal.valueOf(o.getFlowPrice()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        result.setWeekNewConsumeAmount(weekConsumeAmount);
+
+        // ===================== ✅ 佣金逻辑：和订单佣金完全统一 =====================
+        // 总佣金 = 已结算佣金（订单完成后才算）
+        BigDecimal totalCommission = memberCommissionService.getTotalCommissionByInviter(currentMemberId);
+        result.setTotalCommission(totalCommission);
+
+        // 已提现
+        List<MemberWithdrawApply> withdraws = memberWithdrawApplyService.list(Wrappers.lambdaQuery(MemberWithdrawApply.class)
+                .eq(MemberWithdrawApply::getMemberId, currentMemberId)
+                .eq(MemberWithdrawApply::getApplyStatus, WithdrawStatusEnum.VIA_AUDITING.name()));
+
+        BigDecimal alreadyWithdraw = BigDecimal.ZERO;
+        if (CollUtil.isNotEmpty(withdraws)) {
+            alreadyWithdraw = withdraws.stream()
+                    .map(w -> BigDecimal.valueOf(w.getApplyMoney()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        // 可提现 = 总佣金 - 已提现
+        BigDecimal canWithdraw = totalCommission.subtract(alreadyWithdraw).max(BigDecimal.ZERO);
+        result.setCanWithdrawAmount(canWithdraw);
+
+        // ===================== 邀请明细（状态优化） =====================
+        SimpleDateFormat sdf = new SimpleDateFormat("MM-dd HH:mm");
+        List<MemberInviteVO> inviteList = new ArrayList<>();
+
+        for (Member member : inviteMemberList) {
+            MemberInviteVO vo = new MemberInviteVO();
+            vo.setUserId(member.getId());
+            vo.setNickName(CharSequenceUtil.isEmpty(member.getNickName()) ? "用户" + member.getId() : member.getNickName());
+            vo.setFace(member.getFace());
+            vo.setRegisterTime(member.getCreateTime() != null ? sdf.format(member.getCreateTime()) : "--");
+
+            // 该用户消费金额
+            BigDecimal userConsume = BigDecimal.ZERO;
+            if (CollUtil.isNotEmpty(orderList)) {
+                userConsume = orderList.stream()
+                        .filter(o -> o.getMemberId().equals(member.getId()))
+                        .map(o -> BigDecimal.valueOf(o.getFlowPrice()))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+            vo.setConsumeAmount(userConsume);
+
+            // 状态：已消费 / 待确认 / 未消费
+            if (userConsume.compareTo(BigDecimal.ZERO) > 0) {
+                vo.setStatus("已消费");
+            } else {
+                if (member.getCreateTime() == null) {
+                    vo.setStatus("未消费");
+                } else {
+                    long days = (System.currentTimeMillis() - member.getCreateTime().getTime()) / (1000 * 60 * 60 * 24);
+                    vo.setStatus(days <= 7 ? "待确认" : "未消费");
+                }
+            }
+            inviteList.add(vo);
+        }
+
+        result.setInviteList(inviteList);
+        return result;
     }
 
     /**
