@@ -5,6 +5,7 @@ import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
 import cn.lili.modules.goods.entity.enums.GoodsAuthEnum;
 import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
+import cn.lili.modules.goods.entity.vos.GoodsCarouselVO;
 import cn.lili.modules.goods.entity.vos.GoodsNumVO;
 import cn.lili.modules.goods.entity.vos.GoodsVO;
 import cn.lili.modules.store.entity.dos.Store;
@@ -12,6 +13,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 商品业务层
@@ -249,4 +251,9 @@ public interface GoodsService extends IService<Goods> {
      * @return 操作结果
      */
     Boolean upperGoodsByStore(List<String> goodsIds, String storeId, String operateReason);
+
+    /**
+     * 试穿员商品轮播图 - 分成3个竖版：丝袜、内衣、内裤
+     */
+    Map<String, List<GoodsCarouselVO>> getTryOnCarouselThree();
 }

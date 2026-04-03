@@ -8,6 +8,7 @@ import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.goods.entity.dos.Goods;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
+import cn.lili.modules.goods.entity.vos.GoodsCarouselVO;
 import cn.lili.modules.goods.entity.vos.GoodsVO;
 import cn.lili.modules.goods.service.GoodsService;
 import cn.lili.modules.goods.service.GoodsSkuService;
@@ -24,6 +25,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,7 +33,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 
@@ -100,6 +101,12 @@ public class GoodsBuyerController {
     @GetMapping
     public ResultMessage<IPage<Goods>> getByPage(GoodsSearchParams goodsSearchParams) {
         return ResultUtil.data(goodsService.queryByParams(goodsSearchParams));
+    }
+
+    @Operation(summary = "试穿员商品轮播图（3竖版：丝袜、内衣、内裤）")
+    @GetMapping("/tryon-carousel-three")
+    public ResultMessage<Map<String, List<GoodsCarouselVO>>> getTryOnCarouselThree() {
+        return ResultUtil.data(goodsService.getTryOnCarouselThree());
     }
 
     @Operation(summary = "获取商品sku列表")

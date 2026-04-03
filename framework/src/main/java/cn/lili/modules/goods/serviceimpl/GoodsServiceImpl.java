@@ -4,9 +4,6 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.NumberUtil;
-import cn.lili.modules.goods.entity.dto.GoodsParamsItemDTO;
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
 import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
 import cn.lili.common.enums.ResultCode;
@@ -18,11 +15,13 @@ import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
 import cn.lili.modules.goods.entity.dos.*;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
+import cn.lili.modules.goods.entity.dto.GoodsParamsItemDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
 import cn.lili.modules.goods.entity.enums.GoodsAuthEnum;
 import cn.lili.modules.goods.entity.enums.GoodsSalesModeEnum;
 import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
 import cn.lili.modules.goods.entity.enums.GoodsTypeEnum;
+import cn.lili.modules.goods.entity.vos.GoodsCarouselVO;
 import cn.lili.modules.goods.entity.vos.GoodsNumVO;
 import cn.lili.modules.goods.entity.vos.GoodsSkuVO;
 import cn.lili.modules.goods.entity.vos.GoodsVO;
@@ -33,8 +32,8 @@ import cn.lili.modules.member.entity.enums.EvaluationGradeEnum;
 import cn.lili.modules.member.service.MemberEvaluationService;
 import cn.lili.modules.search.utils.EsIndexUtil;
 import cn.lili.modules.store.entity.dos.FreightTemplate;
-import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.dos.FreightTemplateChild;
+import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.vos.FreightTemplateVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
 import cn.lili.modules.store.service.FreightTemplateService;
@@ -47,6 +46,8 @@ import cn.lili.modules.system.service.SettingService;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.GoodsTagsEnum;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -794,6 +795,50 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     @Transactional(rollbackFor = Exception.class)
     public Boolean upperGoodsByStore(List<String> goodsIds, String storeId, String operateReason) {
         return this.updateGoodsMarketAbleByStore(goodsIds, storeId, GoodsStatusEnum.UPPER, operateReason);
+    }
+
+    @Override
+    public Map<String, List<GoodsCarouselVO>> getTryOnCarouselThree() {
+        Map<String, List<GoodsCarouselVO>> map = new LinkedHashMap<>();
+
+        // 获取三个分类
+        List<Category> categoryList = categoryService.lambdaQuery()
+                .eq(Category::getLevel, 1)
+                .in(Category::getName, "内衣", "丝袜", "女士内裤")
+                .list();
+
+        for (Category category : categoryList) {
+            // 查询试穿员已上架、已审核商品
+            List<Goods> goodsList = this.lambdaQuery()
+                    .likeRight(Goods::getCategoryPath, category.getId() + ",")
+                    .eq(Goods::getMarketEnable, GoodsStatusEnum.UPPER.name())
+                    .eq(Goods::getAuthFlag, GoodsAuthEnum.PASS.name())
+                    .orderByDesc(Goods::getCreateTime)
+                    .last("LIMIT 8")
+                    .list();
+
+            // 只保留需要的字段
+            List<GoodsCarouselVO> vos = goodsList.stream().map(g -> {
+                GoodsCarouselVO vo = new GoodsCarouselVO();
+                vo.setGoodsId(g.getId());
+                vo.setGoodsImage(g.getThumbnail()); // 商品主图
+                vo.setPrice(g.getPrice());
+                vo.setStoreName(g.getStoreName()); // 试穿员名称
+                return vo;
+            }).toList();
+
+            switch (category.getName()) {
+                case "丝袜" -> map.put("siWa", vos);
+                case "内衣" -> map.put("neiYi", vos);
+                case "女士内裤" -> map.put("neiKu", vos);
+            }
+        }
+
+        map.putIfAbsent("siWa", Collections.emptyList());
+        map.putIfAbsent("neiYi", Collections.emptyList());
+        map.putIfAbsent("neiKu", Collections.emptyList());
+
+        return map;
     }
 
     private Boolean updateGoodsMarketAbleByStore(List<String> goodsIds, String storeId, GoodsStatusEnum goodsStatusEnum, String operateReason) {
