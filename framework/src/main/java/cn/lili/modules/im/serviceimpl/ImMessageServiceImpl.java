@@ -185,7 +185,7 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
                     money,
                     fromUserId,
                     "发送IM消息消耗预存款(" + money + "元)",
-                    DepositServiceTypeEnum.WALLET_REWARD.name()
+                    DepositServiceTypeEnum.WALLET_SEND_IM.name()
             ));
             if (!deductSuccess) {
                 log.error("会员【{}】发送IM消息扣减预存款失败", fromUserId);
