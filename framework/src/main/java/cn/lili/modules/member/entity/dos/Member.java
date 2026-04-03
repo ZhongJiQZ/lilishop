@@ -6,6 +6,7 @@ import cn.lili.common.security.sensitive.Sensitive;
 import cn.lili.common.security.sensitive.enums.SensitiveStrategy;
 import cn.lili.common.utils.CommonUtil;
 import cn.lili.mybatis.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -126,6 +127,35 @@ public class Member extends BaseEntity {
     @Schema(description = "邀请人名称")
     private String inviterName;
 
+    @Schema(description = "身高(cm)")
+    private Integer height;
+
+    @Schema(description = "体重(斤)")
+    private Integer weight;
+
+    @Schema(description = "个人简介")
+    private String memberDesc;
+
+    @Schema(description = "姓名")
+    private String fullName;
+
+    @Schema(description = "证件号")
+    private String idCard;
+
+    @Schema(description = "职业")
+    private String occupation;
+
+    @Schema(description = "推荐人数")
+    @TableField(exist = false)
+    private Integer recommendCount;
+
+    @Schema(description = "消费人数")
+    @TableField(exist = false)
+    private Integer consumeCount;
+
+    @Schema(description = "消费总金额")
+    @TableField(exist = false)
+    private BigDecimal consumeAmount;
 
     public Member(String username, String password, String mobile) {
         this.username = username;

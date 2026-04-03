@@ -99,4 +99,13 @@ public class StoreCompanyDTO {
     @Schema(description = "店铺简介")
     private String storeDesc;
 
+    @Schema(description = "身高(cm)")
+    private Integer height;
+
+    @Schema(description = "体重(斤)")
+    private Integer weight;
+
+    @Schema(description = "职业")
+    private String occupation;
+
 }

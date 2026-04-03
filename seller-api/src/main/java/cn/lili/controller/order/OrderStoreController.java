@@ -34,7 +34,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -109,10 +112,18 @@ public class OrderStoreController {
     @Parameter(name = "orderSn", description = "订单sn", required = true)
     @Parameter(name = "orderPrice", description = "订单价格", required = true)
     @PutMapping("/update/{orderSn}/price")
-    public ResultMessage<Object> updateOrderPrice(@PathVariable String orderSn,
+    public ResultMessage<Map<String, Object>> updateOrderPrice(@PathVariable String orderSn,
                                                   @NotNull(message = "订单价格不能为空") @RequestParam Double orderPrice) {
         if (NumberUtil.isGreater(Convert.toBigDecimal(orderPrice), Convert.toBigDecimal(0))) {
-            return ResultUtil.data(orderPriceService.updatePrice(orderSn, orderPrice));
+            // 1. 修改订单价格
+            orderPriceService.updatePrice(orderSn, orderPrice);
+            // 2. 拼接支付链接
+            String payUrl = "/pages/order/orderDetail?sn=" + orderSn;
+            // 3. 返回给前端
+            Map<String, Object> map = new HashMap<>();
+            map.put("orderSn", orderSn);
+            map.put("payUrl", payUrl);
+            return ResultUtil.data(map);
         } else {
             return ResultUtil.error(ResultCode.ORDER_PRICE_ERROR);
         }

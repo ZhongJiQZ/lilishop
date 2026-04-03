@@ -177,6 +177,15 @@ public class StoreEditDTO {
     @Schema(description = "腾讯云智服小程序唯一标识")
     private String yzfMpSign;
 
+    @Schema(description = "身高(cm)")
+    private Integer height;
+
+    @Schema(description = "体重(斤)")
+    private Integer weight;
+
+    @Schema(description = "职业")
+    private String occupation;
+
     public String getSalesConsigneeName() {
         return getDefaultValue(salesConsigneeName);
     }

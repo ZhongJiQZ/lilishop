@@ -1,6 +1,7 @@
 package cn.lili.modules.member.serviceimpl;
 
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.cache.Cache;
@@ -36,6 +37,9 @@ import cn.lili.modules.member.mapper.MemberMapper;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.member.token.MemberTokenGenerate;
 import cn.lili.modules.member.token.StoreTokenGenerate;
+import cn.lili.modules.order.order.entity.dos.Order;
+import cn.lili.modules.order.order.entity.enums.PayStatusEnum;
+import cn.lili.modules.order.order.service.OrderService;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.enums.StoreStatusEnum;
 import cn.lili.modules.store.service.StoreService;
@@ -59,11 +63,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 会员接口业务层实现
@@ -113,6 +115,8 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
      */
     @Autowired
     private Cache cache;
+    @Autowired
+    private OrderService orderService;
 
     @Override
     public Member findByUsername(String userName) {
@@ -130,9 +134,65 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
             if(member != null && !member.getDisabled()){
                 throw new ServiceException(ResultCode.USER_STATUS_ERROR);
             }
+            // 获取代理统计信息：推荐人数、消费人数、各消费金额
+            getAgentStatistics(member);
             return member;
         }
         throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+    }
+
+    /**
+     * 获取代理统计信息：推荐人数、消费人数、各消费金额
+     * @param member 当前登录会员
+     */
+    private void getAgentStatistics(Member member) {
+        // 1. 获取当前会员ID（代理ID）
+        String memberId = member.getId();
+
+        // 2. 查询【该会员推荐的所有下级会员】
+        // 条件：inviterId = 当前会员ID
+        LambdaQueryWrapper<Member> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Member::getInviterId, memberId);
+        List<Member> recommendMembers = this.list(queryWrapper);
+
+        // 3. 推荐总人数
+        int recommendCount = recommendMembers.size();
+        member.setRecommendCount(recommendCount);
+
+        if (CollectionUtil.isEmpty(recommendMembers)) {
+            // 没有推荐人，直接赋值0
+            member.setConsumeCount(0);
+            member.setConsumeAmount(new BigDecimal("0"));
+            return;
+        }
+
+        // 4. 提取所有推荐人的会员ID
+        List<String> recommendMemberIds = recommendMembers.stream()
+                .map(Member::getId)
+                .collect(Collectors.toList());
+
+        // 5. 查询这些推荐人的【有效订单】（已支付）
+        LambdaQueryWrapper<Order> orderQuery = new LambdaQueryWrapper<>();
+        orderQuery.in(Order::getMemberId, recommendMemberIds);
+        // 只统计已支付订单
+        orderQuery.eq(Order::getPayStatus, PayStatusEnum.PAID.name());
+        List<Order> orderList = orderService.list(orderQuery);
+
+        // 6. 统计【消费人数】（去重）
+        Set<String> consumeMemberIds = orderList.stream()
+                .map(Order::getMemberId)
+                .collect(Collectors.toSet());
+        int consumeCount = consumeMemberIds.size();
+
+        // 7. 统计【总消费金额】
+        BigDecimal totalConsumeAmount = orderList.stream()
+                .map(Order::getFlowPrice)
+                .map(BigDecimal::valueOf)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 8. 设置到 member 对象返回
+        member.setConsumeCount(consumeCount);
+        member.setConsumeAmount(totalConsumeAmount);
     }
 
     @Override
@@ -501,7 +561,32 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         //传递修改会员信息
         BeanUtil.copyProperties(managerMemberEditDTO, member);
         this.updateById(member);
+        //同步个人信息到店铺信息
+        syncUserInfoToShopInfo(member);
         return member;
+    }
+
+    /**
+     * 同步个人信息到店铺信息
+     * @param member
+     */
+    private void syncUserInfoToShopInfo(Member member) {
+        if(member.getHaveStore() && member.getStoreId()!=null){
+            Store store = storeService.getById(member.getStoreId());
+            if(store == null) {
+                throw new ServiceException(ResultCode.STORE_NOT_EXIST);
+            }
+//            store.setFullName(member.getLegalName());//姓名
+            store.setStoreName(member.getNickName());//昵称
+            store.setStoreDesc(member.getMemberDesc());//个人简介
+//            store.setIdCard(member.getLegalId());//证件号
+//            store.setMobile(member.getLinkPhone());//联系电话
+            store.setStoreLogo(member.getFace());//照片
+//            store.setHeight(member.getHeight());//身高
+//            store.setWeight(member.getWeight());//体重
+//            store.setOccupation(member.getOccupation());//职业
+            storeService.updateById(store);
+        }
     }
 
     @Override

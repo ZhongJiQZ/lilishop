@@ -1,5 +1,7 @@
 package cn.lili.controller.order;
 
+import cn.hutool.core.convert.Convert;
+import cn.hutool.core.util.NumberUtil;
 import cn.lili.common.aop.annotation.PreventDuplicateSubmissions;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
@@ -9,24 +11,25 @@ import cn.lili.common.security.OperationalJudgment;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.order.order.entity.dos.Order;
-import cn.lili.modules.order.order.entity.dos.OrderPackage;
 import cn.lili.modules.order.order.entity.dto.OrderSearchParams;
 import cn.lili.modules.order.order.entity.enums.OrderStatusEnum;
 import cn.lili.modules.order.order.entity.vo.OrderDetailVO;
 import cn.lili.modules.order.order.entity.vo.OrderSimpleVO;
 import cn.lili.modules.order.order.service.OrderPackageService;
+import cn.lili.modules.order.order.service.OrderPriceService;
 import cn.lili.modules.order.order.service.OrderService;
-import cn.lili.modules.system.entity.vo.Traces;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -48,6 +51,11 @@ public class OrderBuyerController {
 
     @Autowired
     private OrderPackageService orderPackageService;
+    /**
+     * 订单价格
+     */
+    @Autowired
+    private OrderPriceService orderPriceService;
 
     @Operation(summary = "查询会员订单列表")
     @GetMapping
@@ -159,5 +167,29 @@ public class OrderBuyerController {
     @GetMapping("/getPackage/{orderSn}")
     public ResultMessage<Object> getPackage(@NotBlank(message = "订单编号不能为空") @PathVariable String orderSn) {
         return ResultUtil.data(orderPackageService.getOrderPackageVOList(orderSn));
+    }
+
+    @PreventDuplicateSubmissions
+    @Operation(summary = "修改订单价格")
+    @Parameters({
+            @Parameter(name = "orderSn", description = "订单sn", required = true),
+            @Parameter(name = "price", description = "订单价格", required = true)
+    })
+    @PutMapping("/update/{orderSn}/price")
+    public ResultMessage<Map<String, Object>> updateOrderPrice(@PathVariable String orderSn,
+                                                 @NotNull(message = "订单价格不能为空") @RequestParam Double price) {
+        if (NumberUtil.isGreater(Convert.toBigDecimal(price), Convert.toBigDecimal(0))) {
+            // 1. 修改订单价格
+            orderPriceService.updatePrice(orderSn, price);
+            // 2. 拼接支付链接
+            String payUrl = "/pages/order/orderDetail?sn=" + orderSn;
+            // 3. 返回给前端
+            Map<String, Object> map = new HashMap<>();
+            map.put("orderSn", orderSn);
+            map.put("payUrl", payUrl);
+            return ResultUtil.data(map);
+        } else {
+            return ResultUtil.error(ResultCode.ORDER_PRICE_ERROR);
+        }
     }
 }

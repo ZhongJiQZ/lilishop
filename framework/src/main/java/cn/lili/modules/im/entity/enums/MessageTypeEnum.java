@@ -14,6 +14,7 @@ public enum MessageTypeEnum {
      * 语音
      * 视频
      * 打赏
+     * 链接
      */
     MESSAGE,
     PICTURE,
@@ -21,5 +22,6 @@ public enum MessageTypeEnum {
     GOODS,
     ORDER,
     VIDEO,
-    REWARD
+    REWARD,
+    LINK
 }

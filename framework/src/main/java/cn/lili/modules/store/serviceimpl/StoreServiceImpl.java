@@ -168,6 +168,8 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             if (storeTmp != null && !CharSequenceUtil.equals(storeTmp.getId(), storeEditDTO.getStoreId())) {
                 throw new ServiceException(ResultCode.STORE_NAME_EXIST_ERROR);
             }
+            //同步店铺信息到个人信息
+            syncShopInfoToUserInfo(storeEditDTO);
             //修改店铺详细信息
             updateStoreDetail(storeEditDTO);
             //修改店铺信息
@@ -175,6 +177,28 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         } else {
             throw new ServiceException(ResultCode.STORE_NOT_EXIST);
         }
+    }
+
+    /**
+     * 同步店铺信息到个人信息
+     * @param storeEditDTO
+     */
+    private void syncShopInfoToUserInfo(StoreEditDTO storeEditDTO) {
+        Store store = this.getById(storeEditDTO.getStoreId());
+        Member member = memberService.getById(store.getMemberId());
+        if(member == null) {
+            throw new ServiceException(ResultCode.USER_NOT_EXIST);
+        }
+        member.setFullName(storeEditDTO.getLegalName());//姓名
+        member.setNickName(storeEditDTO.getStoreName());//昵称
+        member.setMemberDesc(storeEditDTO.getStoreDesc());//个人简介
+        member.setIdCard(storeEditDTO.getLegalId());//证件号
+        member.setMobile(storeEditDTO.getLinkPhone());//联系电话
+        member.setFace(storeEditDTO.getStoreLogo());//照片
+        member.setHeight(storeEditDTO.getHeight());//身高
+        member.setWeight(storeEditDTO.getWeight());//体重
+        member.setOccupation(storeEditDTO.getOccupation());//职业
+        memberService.updateById(member);
     }
 
     /**
@@ -314,6 +338,17 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         if (store == null) {
             AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
             Member member = memberService.getById(authUser.getId());
+            //同步店铺信息到Member
+            member.setFullName(storeCompanyDTO.getLegalName());//姓名
+            member.setNickName(storeCompanyDTO.getStoreName());//昵称
+            member.setMemberDesc(storeCompanyDTO.getStoreDesc());//个人简介
+            member.setIdCard(storeCompanyDTO.getLegalId());//证件号
+            member.setMobile(storeCompanyDTO.getLinkPhone());//联系电话
+            member.setFace(storeCompanyDTO.getStoreLogo());//照片
+            member.setHeight(storeCompanyDTO.getHeight());//身高
+            member.setWeight(storeCompanyDTO.getWeight());//体重
+            member.setOccupation(storeCompanyDTO.getOccupation());//职业
+            memberService.updateById(member);
             //根据会员创建店铺
             store = new Store(member);
             BeanUtil.copyProperties(storeCompanyDTO, store);

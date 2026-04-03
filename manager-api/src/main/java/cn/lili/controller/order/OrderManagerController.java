@@ -10,24 +10,27 @@ import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.member.entity.dto.MemberAddressDTO;
 import cn.lili.modules.order.order.entity.dos.Order;
 import cn.lili.modules.order.order.entity.dto.OrderSearchParams;
+import cn.lili.modules.order.order.entity.dto.PartDeliveryParamsDTO;
 import cn.lili.modules.order.order.entity.vo.OrderDetailVO;
 import cn.lili.modules.order.order.entity.vo.OrderNumVO;
 import cn.lili.modules.order.order.entity.vo.OrderSimpleVO;
 import cn.lili.modules.order.order.service.OrderPriceService;
 import cn.lili.modules.order.order.service.OrderService;
+import cn.lili.modules.system.service.LogisticsService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 管理端,订单API
@@ -50,7 +53,11 @@ public class OrderManagerController {
      */
     @Autowired
     private OrderPriceService orderPriceService;
-
+    /**
+     * 快递
+     */
+    @Autowired
+    private LogisticsService logisticsService;
 
     @Operation(summary = "查询订单列表分页")
     @GetMapping
@@ -106,15 +113,22 @@ public class OrderManagerController {
             @Parameter(name = "price", description = "订单价格", required = true)
     })
     @PutMapping("/update/{orderSn}/price")
-    public ResultMessage<Order> updateOrderPrice(@PathVariable String orderSn,
+    public ResultMessage<Map<String, Object>> updateOrderPrice(@PathVariable String orderSn,
                                                  @NotNull(message = "订单价格不能为空") @RequestParam Double price) {
         if (NumberUtil.isGreater(Convert.toBigDecimal(price), Convert.toBigDecimal(0))) {
-            return ResultUtil.data(orderPriceService.updatePrice(orderSn, price));
+            // 1. 修改订单价格
+            orderPriceService.updatePrice(orderSn, price);
+            // 2. 拼接支付链接
+            String payUrl = "/pages/order/orderDetail?sn=" + orderSn;
+            // 3. 返回给前端
+            Map<String, Object> map = new HashMap<>();
+            map.put("orderSn", orderSn);
+            map.put("payUrl", payUrl);
+            return ResultUtil.data(map);
         } else {
             return ResultUtil.error(ResultCode.ORDER_PRICE_ERROR);
         }
     }
-
 
     @PreventDuplicateSubmissions
     @Operation(summary = "取消订单")
@@ -142,5 +156,24 @@ public class OrderManagerController {
     public ResultMessage<Object> sellerRemark(@PathVariable String orderSn, @RequestParam String sellerRemark) {
         orderService.updateSellerRemark(orderSn, sellerRemark);
         return ResultUtil.success();
+    }
+
+    @Operation(description = "订单包裹发货")
+    @Parameter(name = "orderSn", description = "订单sn", required = true)
+    @Parameter(name = "logisticsNo", description = "发货单号", required = true)
+    @Parameter(name = "logisticsId", description = "物流公司", required = true)
+    @PostMapping("/{orderSn}/partDelivery")
+    public ResultMessage<Object> delivery(@RequestBody PartDeliveryParamsDTO partDeliveryParamsDTO) {
+        return ResultUtil.data(orderService.partDelivery(partDeliveryParamsDTO));
+    }
+
+    @PreventDuplicateSubmissions
+    @Operation(description = "创建电子面单")
+    @Parameter(name = "orderSn", description = "订单sn", required = true)
+    @Parameter(name = "logisticsId", description = "物流公司", required = true)
+    @PostMapping("/{orderSn}/createElectronicsFaceSheet")
+    public ResultMessage<Object> createElectronicsFaceSheet(@NotNull(message = "参数非法") @PathVariable String orderSn,
+                                                            @NotNull(message = "请选择物流公司") String logisticsId) {
+        return ResultUtil.data(logisticsService.labelOrder(orderSn, logisticsId));
     }
 }

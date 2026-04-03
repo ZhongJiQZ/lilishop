@@ -213,3 +213,15 @@ CREATE TABLE `li_im_member_income` (
 -- 充值添加字段
 ALTER TABLE `lilishop`.`li_recharge`
     ADD COLUMN `recharge_type` int NULL DEFAULT NULL COMMENT '充值类型 0：普通充值 1：会员充值' AFTER `receivable_no`;
+
+-- 试穿员字段
+ALTER TABLE li_member
+    ADD COLUMN height INT(11) NULL COMMENT '身高(cm)',
+    ADD COLUMN weight INT(11) NULL COMMENT '体重(斤)',
+    ADD COLUMN member_desc VARCHAR(255) NULL COMMENT '个人简介',
+    ADD COLUMN full_name VARCHAR(255) NULL COMMENT '姓名',
+    ADD COLUMN id_card VARCHAR(255) NULL COMMENT '证件号',
+    ADD COLUMN occupation VARCHAR(255) NULL COMMENT '职业';
+
+-- 付款协议
+INSERT INTO `lilishop`.`li_article` (`id`, `create_by`, `create_time`, `delete_flag`, `update_by`, `update_time`, `category_id`, `content`, `sort`, `title`, `type`, `open_status`) VALUES (1371779927900160001, 'admin', '2021-03-16 06:06:36', b'0', 'admin', '2021-11-04 19:10:47', '1371779742369316864', '<p>APP隐私协议<br />\n以下隐私协议是xxx公司（以下简称\"我们\"） 对用户隐私保护的许诺，请您务必仔细阅读，以了解我们关于管理您个人信息的情况。本隐私协议使用协议\"的重要组成部分，与其具有同等法律效力。</p>', 1, '付费协议', 'PAYMENT_AGREEMENT', b'1');
