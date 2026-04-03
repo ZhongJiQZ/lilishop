@@ -182,20 +182,12 @@ public class WebSocketServer {
             case PING:
                 break;
             case MESSAGE:
-                //保存消息
                 ImMessage imMessage = new ImMessage(messageOperation);
-                imMessageService.save(imMessage);
-                //修改最后消息信息
-                imTalkService.update(new LambdaUpdateWrapper<ImTalk>().eq(ImTalk::getId, messageOperation.getTalkId())
-                    .set(ImTalk::getLastTalkMessage, messageOperation.getContext())
-                    .set(ImTalk::getLastTalkTime, imMessage.getCreateTime())
-                    .set(ImTalk::getLastMessageType, imMessage.getMessageType()));
-                imMessage.setText(SensitiveWordsFilter.filter(imMessage.getText()));
-
                 try {
                     // 发送消息消耗平台币（自动识别 to 是会员ID / 店铺ID）
+                    String fromId = messageOperation.getFrom();
                     String toId = messageOperation.getTo();
-                    imMessageService.deductPlatformCoin(authUser.getId(), toId);
+                    imMessageService.deductPlatformCoin(fromId, toId);
                 } catch (ServiceException e) {
                     // 余额不足 → 返回提示，不发送消息
                     log.error("余额不足 → 返回提示，不发送消息：{}", e.getMsg());
@@ -203,6 +195,14 @@ public class WebSocketServer {
                     sendMessage(authUser.getId(), new MessageVO(MessageResultType.ERROR, imMessage));
                     return;
                 }
+                //保存消息
+                imMessageService.save(imMessage);
+                //修改最后消息信息
+                imTalkService.update(new LambdaUpdateWrapper<ImTalk>().eq(ImTalk::getId, messageOperation.getTalkId())
+                    .set(ImTalk::getLastTalkMessage, messageOperation.getContext())
+                    .set(ImTalk::getLastTalkTime, imMessage.getCreateTime())
+                    .set(ImTalk::getLastMessageType, imMessage.getMessageType()));
+                imMessage.setText(SensitiveWordsFilter.filter(imMessage.getText()));
 
                 //发送消息
                 sendMessage(messageOperation.getTo(), new MessageVO(MessageResultType.MESSAGE, imMessage));

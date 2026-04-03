@@ -88,8 +88,8 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
         boolean deductSuccess = this.memberWalletService.reduce(new MemberWalletUpdateDTO(
                 money,
                 userId,
-                "会员打赏礼物：" + gift.getGiftName(),
-                DepositServiceTypeEnum.WALLET_REWARD.name()
+                "会员打赏礼物：" + gift.getGiftName() + "(" + gift.getCoinPrice() + "元)",
+                DepositServiceTypeEnum.WALLET_REWARD_GIFT.name()
         ));
         if (!deductSuccess) {
             throw new ServiceException(ResultCode.PLATFORM_COIN_OPERATION_FAILED, "打赏失败，余额扣减失败");
@@ -108,8 +108,8 @@ public class ImChatRewardServiceImpl extends ServiceImpl<ImChatRewardMapper, ImC
         boolean addSuccess = this.memberWalletService.increase(new MemberWalletUpdateDTO(
                 money,
                 toMember.getId(),
-                "收到会员打赏礼物：" + gift.getGiftName(),
-                DepositServiceTypeEnum.WALLET_REWARD.name()
+                "收到会员打赏礼物：" + gift.getGiftName() + "(" + gift.getCoinPrice() + "元)",
+                DepositServiceTypeEnum.WALLET_REWARD_GIFT_RECEIVE.name()
         ));
         if (!addSuccess) {
             log.error("打赏功能——给被打赏人【{}】增加余额失败，金额：{}", toMember.getId(), money);

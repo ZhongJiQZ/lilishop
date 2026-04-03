@@ -144,14 +144,21 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
     @Override
     public boolean deductPlatformCoin(String fromUserId, String toUserId) {
         try {
-            // 1. 获取发送人信息
+            // 1. 判断是否为商家/管理员 → 不扣费
+            Store store = storeService.getById(fromUserId);
+            if(store != null) {
+                log.info("商家发送消息，不消耗预存款");
+                return true;
+            }
+
+            // 2. 获取发送人信息
             Member fromMember = memberService.getById(fromUserId);
             if (fromMember == null) {
                 log.error("发送用户不存在，用户ID：{}", fromUserId);
                 throw new ServiceException(ResultCode.USER_NOT_EXIST, "发送用户不存在");
             }
 
-            // 2. 获取系统配置的消耗金额
+            // 3. 获取系统配置的消耗金额
             CoinSetting coinSetting = getCoinSetting();
             if (coinSetting == null || coinSetting.getConsumer().compareTo(BigDecimal.ZERO) <= 0) {
                 log.info("平台未开启消息消耗预存款功能");
@@ -159,21 +166,6 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             }
             BigDecimal consumeMoney = coinSetting.getConsumer();
             Double money = consumeMoney.doubleValue();
-
-            // 3. 判断是否为商家/管理员 → 不扣费
-            AuthUser authUser = UserContext.getCurrentUser();
-            if (authUser != null) {
-                if (UserEnums.STORE.equals(authUser.getRole())) {
-                    log.info("商家发送消息-卖家端，不消耗预存款");
-                    return true;
-                } else if (UserEnums.MEMBER.equals(authUser.getRole())) {
-                    Store store = storeService.getById(fromUserId);
-                    if (store != null) {
-                        log.info("商家发送消息-买家端，不消耗预存款");
-                        return true;
-                    }
-                }
-            }
 
             // ============================
             // 4. 校验会员钱包余额（预存款）

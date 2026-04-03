@@ -40,12 +40,14 @@ import cn.lili.modules.store.service.StoreService;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.StoreTagsEnum;
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -62,6 +64,7 @@ import java.util.Objects;
  * @author pikachu
  * @since 2020-03-07 16:18:56
  */
+@Slf4j
 @Service
 public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements StoreService {
 
@@ -274,6 +277,8 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             Member member = memberService.getById(store.getMemberId());
             member.setHaveStore(true);
             member.setStoreId(id);
+            // 同步店铺信息到个人信息
+            syncShopInfoToUserInfo(store, member);
             memberService.updateById(member);
             //创建店员
             ClerkAddDTO clerkAddDTO = new ClerkAddDTO();
@@ -291,6 +296,23 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         }
         cache.remove(CachePrefix.STORE.getPrefix() + store.getId());
         return this.updateById(store);
+    }
+
+    /**
+     * 同步店铺信息到个人信息
+     * @param store
+     */
+    private void syncShopInfoToUserInfo(Store store, Member member) {
+        StoreDetail storeDetail = storeDetailService.getStoreDetail(store.getId());
+        member.setFullName(store.getFullName());//姓名
+        member.setNickName(storeDetail.getStoreName());//昵称
+        member.setMemberDesc(store.getStoreDesc());//个人简介
+        member.setIdCard(storeDetail.getLegalId());//证件号
+        member.setMobile(storeDetail.getLinkPhone());//联系电话
+        member.setFace(store.getStoreLogo());//照片
+        member.setHeight(store.getHeight());//身高
+        member.setWeight(store.getWeight());//体重
+        member.setOccupation(store.getOccupation());//职业
     }
 
     @Override
@@ -338,20 +360,15 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         if (store == null) {
             AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
             Member member = memberService.getById(authUser.getId());
-            //同步店铺信息到Member
-            member.setFullName(storeCompanyDTO.getLegalName());//姓名
-            member.setNickName(storeCompanyDTO.getStoreName());//昵称
-            member.setMemberDesc(storeCompanyDTO.getStoreDesc());//个人简介
-            member.setIdCard(storeCompanyDTO.getLegalId());//证件号
-            member.setMobile(storeCompanyDTO.getLinkPhone());//联系电话
-            member.setFace(storeCompanyDTO.getStoreLogo());//照片
-            member.setHeight(storeCompanyDTO.getHeight());//身高
-            member.setWeight(storeCompanyDTO.getWeight());//体重
-            member.setOccupation(storeCompanyDTO.getOccupation());//职业
-            memberService.updateById(member);
             //根据会员创建店铺
             store = new Store(member);
             BeanUtil.copyProperties(storeCompanyDTO, store);
+            log.info("申请店铺信息storeCompanyDTO：{}", JSON.toJSONString(storeCompanyDTO));
+            log.info("申请店铺信息store：{}", JSON.toJSONString(store));
+//            store.setFullName(storeCompanyDTO.getStoreName());
+//            store.setHeight(storeCompanyDTO.getHeight());
+//            store.setWeight(storeCompanyDTO.getWeight());
+//            store.setOccupation(storeCompanyDTO.getOccupation());
             store.setStoreDisable(StoreStatusEnum.APPLYING.name());
             this.save(store);
             StoreDetail storeDetail = new StoreDetail();
@@ -500,6 +517,7 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             List<GoodsTradeRankingVO> list = goodsList.stream().map(goods -> {
                 GoodsTradeRankingVO goodsTradeRankingVO = new GoodsTradeRankingVO();
                 BeanUtil.copyProperties(goods, goodsTradeRankingVO);
+                goodsTradeRankingVO.setGoodsId(goods.getId());
                 return goodsTradeRankingVO;
             }).toList();
             vo.setGoodsList(list);

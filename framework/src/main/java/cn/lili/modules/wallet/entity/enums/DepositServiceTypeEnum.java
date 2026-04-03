@@ -15,7 +15,8 @@ public enum DepositServiceTypeEnum {
     WALLET_PAY("余额支付"),
     WALLET_REFUND("余额退款"),
     WALLET_RECHARGE("余额充值"),
-    WALLET_REWARD("会员打赏礼物"),
+    WALLET_REWARD_GIFT("会员打赏礼物"),
+    WALLET_REWARD_GIFT_RECEIVE("收到会员打赏礼物"),
     WALLET_COMMISSION("佣金提成");
 
     private final String description;

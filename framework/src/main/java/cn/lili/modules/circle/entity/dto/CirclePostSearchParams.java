@@ -38,6 +38,10 @@ public class CirclePostSearchParams extends PageVO {
             queryWrapper.like("content", content);
         }
 
+        if (CharSequenceUtil.isNotEmpty(storeId)) {
+            queryWrapper.eq("IFNULL(c.store_id, s.id)", storeId);
+        }
+
         queryWrapper.eq(isHomeShow != null, "ifnull(is_home_show, 0)", isHomeShow);
 
 //        queryWrapper.eq("c.delete_flag", false);

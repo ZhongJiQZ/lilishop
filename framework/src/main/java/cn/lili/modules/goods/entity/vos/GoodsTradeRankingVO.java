@@ -12,6 +12,9 @@ import lombok.Data;
 @Data
 public class GoodsTradeRankingVO {
 
+    @Schema(description = "商品ID")
+    private String goodsId;
+
     @Schema(description = "商品名称")
     private String goodsName;
 

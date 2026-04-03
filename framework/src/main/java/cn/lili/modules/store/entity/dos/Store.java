@@ -101,6 +101,18 @@ public class Store extends BaseEntity {
     @Schema(description = "udesk IM标识")
     private String merchantEuid;
 
+    @Schema(description = "姓名")
+    private String fullName;
+
+    @Schema(description = "身高(cm)")
+    private Integer height;
+
+    @Schema(description = "体重(斤)")
+    private Integer weight;
+
+    @Schema(description = "职业")
+    private String occupation;
+
     public Boolean getPageShow() {
         if (pageShow == null) {
             return false;
