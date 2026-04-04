@@ -39,6 +39,10 @@ import cn.lili.modules.store.entity.vos.StoreVO;
 import cn.lili.modules.store.mapper.StoreMapper;
 import cn.lili.modules.store.service.StoreDetailService;
 import cn.lili.modules.store.service.StoreService;
+import cn.lili.modules.system.entity.dos.Setting;
+import cn.lili.modules.system.entity.dto.EidSetting;
+import cn.lili.modules.system.entity.enums.SettingEnum;
+import cn.lili.modules.system.service.SettingService;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.StoreTagsEnum;
@@ -48,6 +52,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,6 +115,9 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
 
     @Autowired
     private MemberEidRecordService memberEidRecordService;
+
+    @Autowired
+    private SettingService settingService;
 
     @Autowired
     private Cache cache;
@@ -356,34 +364,49 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
     }
 
     /**
+     * 获取E证通设置
+     *
+     * @return E证通设置
+     */
+    private EidSetting getEidConfig() {
+        Setting setting = settingService.get(SettingEnum.EID_SETTING.name());
+        return new Gson().fromJson(setting.getSettingValue(), EidSetting.class);
+    }
+
+    /**
      * 校验用户是否完成E证通核身
      * 且店铺申请信息与E证通实名信息一致
      * @param storeCompanyDTO 店铺申请信息
      */
     private void checkEidVerify(StoreCompanyDTO storeCompanyDTO) {
-        AuthUser authUser = UserContext.getCurrentUser();
-        if (authUser == null) {
-            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
-        }
+        EidSetting eidConfig = getEidConfig();
+        if(eidConfig != null) {
+            if(eidConfig.getIsOpen()){
+                AuthUser authUser = UserContext.getCurrentUser();
+                if (authUser == null) {
+                    throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+                }
 
-        // 查询用户最新一条成功的核身记录
-        LambdaQueryWrapper<MemberEidRecord> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(MemberEidRecord::getMemberId, authUser.getId());
-        queryWrapper.eq(MemberEidRecord::getStatus, "SUCCESS");
-        queryWrapper.orderByDesc(MemberEidRecord::getCreateTime);
-        queryWrapper.last("LIMIT 1");
+                // 查询用户最新一条成功的核身记录
+                LambdaQueryWrapper<MemberEidRecord> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(MemberEidRecord::getMemberId, authUser.getId());
+                queryWrapper.eq(MemberEidRecord::getStatus, "SUCCESS");
+                queryWrapper.orderByDesc(MemberEidRecord::getCreateTime);
+                queryWrapper.last("LIMIT 1");
 
-        MemberEidRecord eidRecord = memberEidRecordService.getOne(queryWrapper);
+                MemberEidRecord eidRecord = memberEidRecordService.getOne(queryWrapper);
 
-        // 未完成核身
-        if (eidRecord == null) {
-            throw new ServiceException(ResultCode.EID_VERIFY_REQUIRED);
-        }
+                // 未完成核身
+                if (eidRecord == null) {
+                    throw new ServiceException(ResultCode.EID_VERIFY_REQUIRED);
+                }
 
-        // 信息不一致
-        if (!CharSequenceUtil.equals(storeCompanyDTO.getLegalName(), eidRecord.getName())
-                || !CharSequenceUtil.equals(storeCompanyDTO.getLegalId(), eidRecord.getIdCard())) {
-            throw new ServiceException(ResultCode.EID_INFO_NOT_MATCH);
+                // 信息不一致
+                if (!CharSequenceUtil.equals(storeCompanyDTO.getLegalName(), eidRecord.getName())
+                        || !CharSequenceUtil.equals(storeCompanyDTO.getLegalId(), eidRecord.getIdCard())) {
+                    throw new ServiceException(ResultCode.EID_INFO_NOT_MATCH);
+                }
+            }
         }
     }
 

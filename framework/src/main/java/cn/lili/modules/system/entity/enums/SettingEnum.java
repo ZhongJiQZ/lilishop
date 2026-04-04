@@ -29,6 +29,8 @@ public enum SettingEnum {
     POINT_SETTING,
     //平台币设置
     COIN_SETTING,
+    //E证通设置
+    EID_SETTING,
     //邀请佣金设置
     INVITE_COMMISSION_SETTING,
     //经验值设置

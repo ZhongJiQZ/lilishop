@@ -216,11 +216,3 @@ rocketmq:
   producer:
     group: lili_group
     send-message-timeout: 30000
-
-# 腾讯云E证通配置
-tencent:
-  eid:
-    secret-id: xxx
-    secret-key: xxx
-    merchant-id: 你的EID商户ID
-    region: ap-guangzhou

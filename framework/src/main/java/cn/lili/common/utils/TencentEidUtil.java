@@ -1,7 +1,14 @@
 package cn.lili.common.utils;
 
+import cn.hutool.core.util.StrUtil;
+import cn.lili.common.exception.ServiceException;
 import cn.lili.modules.eid.entity.dos.MemberEidRecord;
 import cn.lili.modules.eid.service.MemberEidRecordService;
+import cn.lili.modules.system.entity.dos.Setting;
+import cn.lili.modules.system.entity.dto.EidSetting;
+import cn.lili.modules.system.entity.enums.SettingEnum;
+import cn.lili.modules.system.service.SettingService;
+import com.google.gson.Gson;
 import com.tencentcloudapi.common.Credential;
 import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import com.tencentcloudapi.common.profile.ClientProfile;
@@ -11,7 +18,6 @@ import com.tencentcloudapi.faceid.v20180301.models.*;
 import jakarta.annotation.Resource;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -21,43 +27,64 @@ import java.util.Date;
  */
 @Slf4j
 @Component
-@ConfigurationProperties(prefix = "tencent.eid") // 从yml读取
 @Data
 public class TencentEidUtil {
 
-    /**
-     * 腾讯云SecretId
-     */
-    private String secretId;
-
-    /**
-     * 腾讯云SecretKey
-     */
-    private String secretKey;
-
-    /**
-     * E证通商户ID
-     */
-    private String merchantId;
-
-    /**
-     * 地域
-     */
-    private String region;
+    @Resource
+    private SettingService settingService;
 
     @Resource
     private MemberEidRecordService memberEidRecordService;
+
+    /**
+     * 获取E证通设置
+     *
+     * @return E证通设置
+     */
+    private EidSetting getEidConfig() {
+        Setting setting = settingService.get(SettingEnum.EID_SETTING.name());
+        return new Gson().fromJson(setting.getSettingValue(), EidSetting.class);
+    }
+
+    private String getSecretId() {
+        return getEidConfig().getSecretId();
+    }
+
+    private String getSecretKey() {
+        return getEidConfig().getSecretKey();
+    }
+
+    private String getMerchantId() {
+        return getEidConfig().getMerchantId();
+    }
+
+    private String getRegion() {
+        String region = getEidConfig().getRegion();
+        return StrUtil.isEmpty(region) ? "ap-guangzhou" : region;
+    }
+
+    /**
+     * 校验E政通
+     */
+    private void checkEidSetting() {
+        EidSetting eidConfig = getEidConfig();
+        if(eidConfig != null && !eidConfig.getIsOpen()) {
+            throw new ServiceException("E证通已关闭");
+        }
+    }
 
     /**
      * 获取E证通Token（认证链接）
      */
     public EidTokenResult getEidToken(String name, String idCard) {
         try {
-            log.info("secretId = {}, secretKey = {}", secretId, secretKey);
+            // 校验E政通
+            checkEidSetting();
+            log.info("secretId = {}, secretKey = {}", getSecretId(), getSecretKey());
             FaceidClient client = getFaceidClient();
             GetEidTokenRequest req = new GetEidTokenRequest();
 
-            req.setMerchantId(merchantId);
+            req.setMerchantId(getMerchantId());
             req.setName(name);
             req.setIdCard(idCard);
 
@@ -78,30 +105,15 @@ public class TencentEidUtil {
     }
 
     /**
-     * 查询E证通认证结果
-     */
-    public GetEidResultResponse getEidResult(String eidToken) {
-        try {
-            FaceidClient client = getFaceidClient();
-            GetEidResultRequest req = new GetEidResultRequest();
-            req.setEidToken(eidToken);
-            req.setInfoType("0");
-            return client.GetEidResult(req);
-        } catch (TencentCloudSDKException e) {
-            throw new RuntimeException("查询E证通结果失败：" + e.getMessage());
-        }
-    }
-
-    /**
      * 初始化人脸识别客户端
      */
     private FaceidClient getFaceidClient() {
-        Credential cred = new Credential(secretId, secretKey);
+        Credential cred = new Credential(getSecretId(), getSecretKey());
         HttpProfile httpProfile = new HttpProfile();
         httpProfile.setEndpoint("faceid.tencentcloudapi.com");
         ClientProfile clientProfile = new ClientProfile();
         clientProfile.setHttpProfile(httpProfile);
-        return new FaceidClient(cred, region, clientProfile);
+        return new FaceidClient(cred, getRegion(), clientProfile);
     }
 
     /**
@@ -115,10 +127,12 @@ public class TencentEidUtil {
     }
 
     /**
-     * 第三步：查询核身结果 + 自动保存到数据库
+     * 查询E证通认证结果 + 自动保存到数据库
      */
     public GetEidResultResponse getEidResultAndSave(String eidToken, String memberId) {
         try {
+            // 校验E政通
+            checkEidSetting();
             FaceidClient client = getFaceidClient();
             GetEidResultRequest req = new GetEidResultRequest();
             req.setEidToken(eidToken);
