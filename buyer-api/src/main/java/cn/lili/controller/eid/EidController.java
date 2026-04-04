@@ -1,6 +1,8 @@
 package cn.lili.controller.eid;
 
 import cn.lili.common.enums.ResultUtil;
+import cn.lili.common.security.AuthUser;
+import cn.lili.common.security.context.UserContext;
 import cn.lili.common.utils.TencentEidUtil;
 import cn.lili.common.vo.ResultMessage;
 import com.tencentcloudapi.faceid.v20180301.models.GetEidResultResponse;
@@ -37,7 +39,8 @@ public class EidController {
     @Operation(summary = "查询认证结果")
     @GetMapping("/getResult")
     public ResultMessage<GetEidResultResponse> getResult(String eidToken) {
-        GetEidResultResponse response = tencentEidUtil.getEidResult(eidToken);
-        return ResultUtil.data(response);
+        AuthUser authUser = UserContext.getCurrentUser();
+        GetEidResultResponse result = tencentEidUtil.getEidResultAndSave(eidToken, authUser.getId());
+        return ResultUtil.data(result);
     }
 }

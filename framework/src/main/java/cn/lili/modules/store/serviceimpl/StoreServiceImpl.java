@@ -13,6 +13,8 @@ import cn.lili.common.security.context.UserContext;
 import cn.lili.common.security.enums.UserEnums;
 import cn.lili.common.utils.BeanUtil;
 import cn.lili.common.vo.PageVO;
+import cn.lili.modules.eid.entity.dos.MemberEidRecord;
+import cn.lili.modules.eid.service.MemberEidRecordService;
 import cn.lili.modules.goods.entity.dos.Goods;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
 import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
@@ -40,7 +42,6 @@ import cn.lili.modules.store.service.StoreService;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.StoreTagsEnum;
-import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -106,6 +107,9 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
     @Autowired
     @Lazy
     private FootprintService footprintService;
+
+    @Autowired
+    private MemberEidRecordService memberEidRecordService;
 
     @Autowired
     private Cache cache;
@@ -351,8 +355,43 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         throw new ServiceException(ResultCode.STORE_NOT_EXIST);
     }
 
+    /**
+     * 校验用户是否完成E证通核身
+     * 且店铺申请信息与E证通实名信息一致
+     * @param storeCompanyDTO 店铺申请信息
+     */
+    private void checkEidVerify(StoreCompanyDTO storeCompanyDTO) {
+        AuthUser authUser = UserContext.getCurrentUser();
+        if (authUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+
+        // 查询用户最新一条成功的核身记录
+        LambdaQueryWrapper<MemberEidRecord> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(MemberEidRecord::getMemberId, authUser.getId());
+        queryWrapper.eq(MemberEidRecord::getStatus, "SUCCESS");
+        queryWrapper.orderByDesc(MemberEidRecord::getCreateTime);
+        queryWrapper.last("LIMIT 1");
+
+        MemberEidRecord eidRecord = memberEidRecordService.getOne(queryWrapper);
+
+        // 未完成核身
+        if (eidRecord == null) {
+            throw new ServiceException(ResultCode.EID_VERIFY_REQUIRED);
+        }
+
+        // 信息不一致
+        if (!CharSequenceUtil.equals(storeCompanyDTO.getLegalName(), eidRecord.getName())
+                || !CharSequenceUtil.equals(storeCompanyDTO.getLegalId(), eidRecord.getIdCard())) {
+            throw new ServiceException(ResultCode.EID_INFO_NOT_MATCH);
+        }
+    }
+
     @Override
     public boolean applyFirstStep(StoreCompanyDTO storeCompanyDTO) {
+        // E证通核身校验
+        checkEidVerify(storeCompanyDTO);
+
         //获取当前操作的店铺
         Store store = getStoreByMember();
 
@@ -363,12 +402,6 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             //根据会员创建店铺
             store = new Store(member);
             BeanUtil.copyProperties(storeCompanyDTO, store);
-            log.info("申请店铺信息storeCompanyDTO：{}", JSON.toJSONString(storeCompanyDTO));
-            log.info("申请店铺信息store：{}", JSON.toJSONString(store));
-//            store.setFullName(storeCompanyDTO.getStoreName());
-//            store.setHeight(storeCompanyDTO.getHeight());
-//            store.setWeight(storeCompanyDTO.getWeight());
-//            store.setOccupation(storeCompanyDTO.getOccupation());
             store.setStoreDisable(StoreStatusEnum.APPLYING.name());
             this.save(store);
             StoreDetail storeDetail = new StoreDetail();

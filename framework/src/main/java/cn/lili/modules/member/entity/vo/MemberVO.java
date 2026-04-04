@@ -86,6 +86,18 @@ public class MemberVO implements Serializable {
     @Schema(description = "是否是VIP会员 0=普通用户 1=会员用户")
     private Integer isVip;
 
+    @Schema(description = "邀请码")
+    private String inviteCode;
+
+    @Schema(description = "邀请人ID")
+    private String inviterId;
+
+    @Schema(description = "邀请人Code")
+    private String inviterCode;
+
+    @Schema(description = "邀请人名称")
+    private String inviterName;
+
     /**
      * @see ClientTypeEnum
      */

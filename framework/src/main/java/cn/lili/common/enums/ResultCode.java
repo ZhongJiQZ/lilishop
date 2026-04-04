@@ -552,6 +552,12 @@ public enum ResultCode {
     CHAT_GIFT_NOT_EXIST(80600, "礼物不存在或已删除"),
 
     /**
+     * E证通 - 错误码从 80600 开始
+     */
+    EID_VERIFY_REQUIRED(80700, "请先完成E证通人脸核身认证，再申请店铺"),
+    EID_INFO_NOT_MATCH(80701, "申请人信息与E证通实名信息不一致"),
+
+    /**
      * 其他
      */
     CUSTOM_WORDS_EXIST_ERROR(90000, "当前自定义分词已存在！"),

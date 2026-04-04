@@ -251,3 +251,43 @@ CREATE TABLE `li_member_commission` (
 
 -- 邀请佣金设置
 INSERT INTO `lilishop`.`li_setting` (`id`, `create_by`, `create_time`, `delete_flag`, `update_by`, `update_time`, `setting_value`) VALUES ('INVITE_COMMISSION_SETTING', 'admin', '2021-02-21 09:34:41.153000', b'0', 'admin', '2021-02-26 08:54:01.267000', '{\"isOpen\":true,\"commissionRate\":0.10}');
+
+-- 会员E证通核身记录
+CREATE TABLE `li_member_eid_record`
+(
+    `id`                  bigint NOT NULL AUTO_INCREMENT,
+    `member_id`           varchar(64)  DEFAULT NULL COMMENT '用户ID',
+    `eid_token`           varchar(128) NOT NULL COMMENT '核身令牌',
+    `err_code`            bigint DEFAULT NULL COMMENT '错误码',
+    `err_msg`             varchar(255) DEFAULT NULL COMMENT '错误信息',
+    `status`              varchar(20)  DEFAULT NULL COMMENT '状态 SUCCESS 成功 / FAIL 失败',
+    `name`                varchar(50)  DEFAULT NULL COMMENT '姓名',
+    `id_card`             varchar(50)  DEFAULT NULL COMMENT '身份证',
+    `ocr_nation`          varchar(20)  DEFAULT NULL COMMENT '民族',
+    `ocr_address`         varchar(255) DEFAULT NULL COMMENT '家庭住址',
+    `ocr_birth`           varchar(20)  DEFAULT NULL COMMENT '生日',
+    `ocr_authority`       varchar(100) DEFAULT NULL COMMENT '签发机关',
+    `ocr_valid_date`      varchar(50)  DEFAULT NULL COMMENT '身份证有效日期',
+    `ocr_gender`          varchar(10)  DEFAULT NULL COMMENT '性别',
+    `live_status`         bigint DEFAULT NULL COMMENT '本次流程最终活体结果 0为成功',
+    `live_msg`            varchar(255) DEFAULT NULL COMMENT '本次流程最终活体结果描述',
+    `compare_status`      bigint DEFAULT NULL COMMENT '本次一比一结果。0为成功',
+    `compare_msg`         varchar(255) DEFAULT NULL COMMENT '本次一比一结果描述',
+    `sim`                 varchar(20)  DEFAULT NULL COMMENT '本次流程活体一比一的分数',
+    `compare_lib_type`    varchar(50)  DEFAULT NULL COMMENT '比对库源类型',
+    `liveness_mode`       bigint DEFAULT NULL COMMENT '活体检测类型',
+    `mobile`              varchar(20)  DEFAULT NULL COMMENT '手机号码',
+    `final_result_detail_code` varchar(50) DEFAULT NULL COMMENT '意愿核身错误码',
+    `final_result_message` varchar(255) DEFAULT NULL COMMENT '意愿核身错误信息',
+    `best_frame`          longtext COMMENT '活体比对最佳帧Base64编码',
+    `ocr_front`           longtext COMMENT 'OCR正面照片的base64编码',
+    `ocr_back`            longtext COMMENT 'OCR反面照片的base64编码',
+    `avatar`              longtext COMMENT '身份证正面人像图base64编码',
+    `result_json`         longtext COMMENT '完整结果JSON',
+    `create_by`     VARCHAR(255)     DEFAULT NULL COMMENT '创建者',
+    `create_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+    `delete_flag`   BIT(1)           DEFAULT b'0' COMMENT '删除标志（0未删 1已删）',
+    `update_by`     VARCHAR(255)     DEFAULT NULL COMMENT '更新者',
+    `update_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员E证通核身记录';
