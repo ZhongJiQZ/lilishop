@@ -246,8 +246,41 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         queryWrapper.like(CharSequenceUtil.isNotEmpty(orderSearchParams.getKeywords()), "o.sn", orderSearchParams.getKeywords());
         queryWrapper.like(CharSequenceUtil.isNotEmpty(orderSearchParams.getOrderSn()), "o.sn", orderSearchParams.getOrderSn());
         queryWrapper.like(CharSequenceUtil.isNotEmpty(orderSearchParams.getGoodsName()), "oi.goods_name", orderSearchParams.getGoodsName());
-        queryWrapper.eq(CharSequenceUtil.isNotEmpty(orderSearchParams.getOrderStatus()), "o.order_status", orderSearchParams.getOrderStatus());
-        queryWrapper.eq(CharSequenceUtil.isNotEmpty(orderSearchParams.getPayStatus()), "o.pay_status", orderSearchParams.getPayStatus());
+        // orderStatus=ALL 表示全部，与 OrderTagEnum.ALL 语义一致，不能当成数据库枚举值去 eq
+        String orderStatusParam = orderSearchParams.getOrderStatus();
+        queryWrapper.eq(CharSequenceUtil.isNotEmpty(orderStatusParam) && !"ALL".equalsIgnoreCase(orderStatusParam.trim()),
+                "o.order_status", orderStatusParam);
+        String payStatusParam = orderSearchParams.getPayStatus();
+        queryWrapper.eq(CharSequenceUtil.isNotEmpty(payStatusParam) && !"ALL".equalsIgnoreCase(payStatusParam.trim()),
+                "o.pay_status", payStatusParam);
+        if (CharSequenceUtil.isNotEmpty(orderSearchParams.getTag())) {
+            try {
+                OrderTagEnum tagEnum = OrderTagEnum.valueOf(orderSearchParams.getTag().trim());
+                String orderStatusColumn = "o.order_status";
+                switch (tagEnum) {
+                    case WAIT_PAY:
+                        queryWrapper.eq(orderStatusColumn, OrderStatusEnum.UNPAID.name());
+                        break;
+                    case WAIT_SHIP:
+                        queryWrapper.eq(orderStatusColumn, OrderStatusEnum.UNDELIVERED.name());
+                        break;
+                    case WAIT_ROG:
+                        queryWrapper.eq(orderStatusColumn, OrderStatusEnum.DELIVERED.name());
+                        break;
+                    case CANCELLED:
+                        queryWrapper.eq(orderStatusColumn, OrderStatusEnum.CANCELLED.name());
+                        break;
+                    case COMPLETE:
+                        queryWrapper.eq(orderStatusColumn, OrderStatusEnum.COMPLETED.name());
+                        break;
+                    case ALL:
+                    default:
+                        break;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // 非法 tag 忽略，避免整页查挂
+            }
+        }
         queryWrapper.ge(orderSearchParams.getStartDate() != null, "o.create_time", orderSearchParams.getStartDate());
         queryWrapper.le(orderSearchParams.getEndDate() != null, "o.create_time", cn.lili.common.utils.DateUtil.endOfDate(orderSearchParams.getEndDate()));
         queryWrapper.eq("o.delete_flag", false);

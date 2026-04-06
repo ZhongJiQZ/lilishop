@@ -412,17 +412,28 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
 
     @Override
     public boolean applyFirstStep(StoreCompanyDTO storeCompanyDTO) {
-        // E证通核身校验
         checkEidVerify(storeCompanyDTO);
+        return doApplyFirstStep(storeCompanyDTO, true);
+    }
 
-        //获取当前操作的店铺
+    @Override
+    public boolean saveCompanyInfoBeforeEidVerify(StoreCompanyDTO storeCompanyDTO) {
+        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        if (memberEidRecordService.hasSuccessfulVerification(authUser.getId())) {
+            throw new ServiceException(ResultCode.EID_ALREADY_VERIFIED);
+        }
+        return doApplyFirstStep(storeCompanyDTO, false);
+    }
+
+    /**
+     * @param strictStoreStatus true 时与历史逻辑一致：OPEN/CLOSED/APPLYING 不允许改第一步资料
+     */
+    private boolean doApplyFirstStep(StoreCompanyDTO storeCompanyDTO, boolean strictStoreStatus) {
         Store store = getStoreByMember();
 
-        //店铺为空，则新增店铺
         if (store == null) {
             AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
             Member member = memberService.getById(authUser.getId());
-            //根据会员创建店铺
             store = new Store(member);
             BeanUtil.copyProperties(storeCompanyDTO, store);
             store.setStoreDisable(StoreStatusEnum.APPLYING.name());
@@ -431,26 +442,34 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
             storeDetail.setStoreId(store.getId());
             BeanUtil.copyProperties(storeCompanyDTO, storeDetail);
             return storeDetailService.save(storeDetail);
-        } else {
+        }
 
-            //校验迪纳普状态
+        if (strictStoreStatus) {
             checkStoreStatus(store);
-            //复制参数 修改已存在店铺
-            BeanUtil.copyProperties(storeCompanyDTO, store);
-            store.setStoreDisable(StoreStatusEnum.APPLYING.name());
-            this.updateById(store);
-            //判断是否存在店铺详情，如果没有则进行新建，如果存在则进行修改
-            StoreDetail storeDetail = storeDetailService.getStoreDetail(store.getId());
-            //如果店铺详情为空，则new ，否则复制对象，然后保存即可。
-            if (storeDetail == null) {
-                storeDetail = new StoreDetail();
-                storeDetail.setStoreId(store.getId());
-                BeanUtil.copyProperties(storeCompanyDTO, storeDetail);
-                return storeDetailService.save(storeDetail);
-            } else {
-                BeanUtil.copyProperties(storeCompanyDTO, storeDetail);
-                return storeDetailService.updateById(storeDetail);
-            }
+        } else {
+            checkStoreStatusAllowCompanyEditBeforeEid(store);
+        }
+        BeanUtil.copyProperties(storeCompanyDTO, store);
+        store.setStoreDisable(StoreStatusEnum.APPLYING.name());
+        this.updateById(store);
+        StoreDetail storeDetail = storeDetailService.getStoreDetail(store.getId());
+        if (storeDetail == null) {
+            storeDetail = new StoreDetail();
+            storeDetail.setStoreId(store.getId());
+            BeanUtil.copyProperties(storeCompanyDTO, storeDetail);
+            return storeDetailService.save(storeDetail);
+        }
+        BeanUtil.copyProperties(storeCompanyDTO, storeDetail);
+        return storeDetailService.updateById(storeDetail);
+    }
+
+    /**
+     * E 证通资料阶段：仅禁止已开业/已关闭店铺改企业资料；允许申请中反复修改。
+     */
+    private void checkStoreStatusAllowCompanyEditBeforeEid(Store store) {
+        String s = store.getStoreDisable();
+        if (StoreStatusEnum.OPEN.name().equals(s) || StoreStatusEnum.CLOSED.name().equals(s)) {
+            throw new ServiceException(ResultCode.STORE_STATUS_ERROR);
         }
     }
 

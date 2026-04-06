@@ -96,6 +96,7 @@ public class StoreBuyerController {
         return ResultUtil.data(storeGoodsLabelService.listByStoreId(id));
     }
 
+    
     @Operation(summary = "申请店铺第一步-填写企业信息")
     @PutMapping("/apply/first")
     public ResultMessage<Object> applyFirstStep(StoreCompanyDTO storeCompanyDTO) {

@@ -3,6 +3,7 @@ package cn.lili.modules.eid.serviceimpl;
 import cn.lili.modules.eid.entity.dos.MemberEidRecord;
 import cn.lili.modules.eid.mapper.MemberEidRecordMapper;
 import cn.lili.modules.eid.service.MemberEidRecordService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,4 +17,11 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 public class MemberEidRecordServiceImpl extends ServiceImpl<MemberEidRecordMapper, MemberEidRecord> implements MemberEidRecordService {
+
+    @Override
+    public boolean hasSuccessfulVerification(String memberId) {
+        return count(new LambdaQueryWrapper<MemberEidRecord>()
+                .eq(MemberEidRecord::getMemberId, memberId)
+                .eq(MemberEidRecord::getStatus, "SUCCESS")) > 0;
+    }
 }

@@ -35,6 +35,8 @@ public class MessageQueryParams extends PageVO {
      */
     private Integer num;
 
+    
+
     public LambdaQueryWrapper<ImMessage> initQueryWrapper() {
         if (CharSequenceUtil.isEmpty(talkId)) {
             throw new ServiceException(ResultCode.ERROR);

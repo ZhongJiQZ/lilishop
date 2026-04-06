@@ -4,6 +4,7 @@ package cn.lili.modules.member.serviceimpl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
 import cn.lili.common.context.ThreadContextHolder;
@@ -136,9 +137,19 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
     public Member getUserInfo() {
         AuthUser tokenUser = UserContext.getCurrentUser();
         if (tokenUser != null) {
-            Member member = this.findByUsername(tokenUser.getUsername());
-            if(member != null && !member.getDisabled()){
+            Member member = this.getById(tokenUser.getId());
+            if (member == null) {
+                member = this.findByUsername(tokenUser.getUsername());
+            }
+            if (member == null) {
+                throw new ServiceException(ResultCode.USER_NOT_EXIST);
+            }
+            if (!member.getDisabled()) {
                 throw new ServiceException(ResultCode.USER_STATUS_ERROR);
+            }
+            if (CharSequenceUtil.isBlank(member.getInviteCode())) {
+                member.setInviteCode(Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase());
+                this.updateById(member);
             }
             return member;
         }

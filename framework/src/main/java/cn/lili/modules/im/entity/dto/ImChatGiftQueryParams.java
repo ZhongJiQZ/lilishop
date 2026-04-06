@@ -35,7 +35,8 @@ public class ImChatGiftQueryParams extends PageVO {
             lambdaQueryWrapper.like(ImChatGift::getGiftName, giftName);
         }
         lambdaQueryWrapper.eq(ImChatGift::getStatus, 1);
-        lambdaQueryWrapper.orderByDesc(ImChatGift::getCreateTime);
+        lambdaQueryWrapper.orderByAsc(ImChatGift::getSort);
+        lambdaQueryWrapper.orderByAsc(ImChatGift::getId);
 //        lambdaQueryWrapper.last("limit " + num);
         return lambdaQueryWrapper;
     }

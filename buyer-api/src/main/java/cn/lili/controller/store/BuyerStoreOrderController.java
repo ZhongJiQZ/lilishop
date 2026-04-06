@@ -1,13 +1,10 @@
 package cn.lili.controller.store;
 
 import cn.hutool.core.convert.Convert;
-import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.exception.ServiceException;
-import cn.lili.common.security.AuthUser;
-import cn.lili.common.security.context.UserContext;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.order.order.entity.dos.Order;
 import cn.lili.modules.order.order.entity.dto.OrderSearchParams;
@@ -15,9 +12,6 @@ import cn.lili.modules.order.order.entity.vo.OrderDetailVO;
 import cn.lili.modules.order.order.entity.vo.OrderSimpleVO;
 import cn.lili.modules.order.order.service.OrderPriceService;
 import cn.lili.modules.order.order.service.OrderService;
-import cn.lili.modules.store.entity.dos.Store;
-import cn.lili.modules.store.service.StoreService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.Objects;
 
 /**
  * 买家端-商户工作台订单接口
@@ -45,7 +38,7 @@ public class BuyerStoreOrderController {
     private OrderPriceService orderPriceService;
 
     @Autowired
-    private StoreService storeService;
+    private BuyerMerchantStoreSupport buyerMerchantStoreSupport;
 
     @Operation(
             summary = "获取当前商户订单列表",
@@ -107,14 +100,6 @@ public class BuyerStoreOrderController {
     }
 
     private String getCurrentStoreId() {
-        AuthUser currentUser = Objects.requireNonNull(UserContext.getCurrentUser());
-        if (CharSequenceUtil.isNotEmpty(currentUser.getStoreId())) {
-            return currentUser.getStoreId();
-        }
-        Store store = storeService.getOne(new LambdaQueryWrapper<Store>().eq(Store::getMemberId, currentUser.getId()), false);
-        if (store == null) {
-            throw new ServiceException("当前账号未绑定店铺");
-        }
-        return store.getId();
+        return buyerMerchantStoreSupport.requireCurrentStoreId();
     }
 }

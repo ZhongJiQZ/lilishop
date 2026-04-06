@@ -1,17 +1,10 @@
 package cn.lili.controller.store;
 
-import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.common.enums.ResultUtil;
-import cn.lili.common.exception.ServiceException;
-import cn.lili.common.security.AuthUser;
-import cn.lili.common.security.context.UserContext;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.goods.entity.dos.Goods;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
-import cn.lili.modules.store.entity.dos.Store;
-import cn.lili.modules.store.service.StoreService;
 import cn.lili.modules.goods.service.GoodsService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.constraints.NotBlank;
 import java.util.Collections;
-import java.util.Objects;
 
 /**
  * 买家端-商户工作台商品接口
@@ -36,7 +28,7 @@ public class BuyerStoreGoodsController {
     private GoodsService goodsService;
 
     @Autowired
-    private StoreService storeService;
+    private BuyerMerchantStoreSupport buyerMerchantStoreSupport;
 
     @Operation(
             summary = "获取template商品列表",
@@ -104,14 +96,6 @@ public class BuyerStoreGoodsController {
     }
 
     private String getCurrentStoreId() {
-        AuthUser currentUser = Objects.requireNonNull(UserContext.getCurrentUser());
-        if (CharSequenceUtil.isNotEmpty(currentUser.getStoreId())) {
-            return currentUser.getStoreId();
-        }
-        Store store = storeService.getOne(new LambdaQueryWrapper<Store>().eq(Store::getMemberId, currentUser.getId()), false);
-        if (store == null) {
-            throw new ServiceException("当前账号未绑定店铺");
-        }
-        return store.getId();
+        return buyerMerchantStoreSupport.requireCurrentStoreId();
     }
 }

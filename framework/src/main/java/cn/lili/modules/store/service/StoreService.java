@@ -89,6 +89,16 @@ public interface StoreService extends IService<Store> {
     boolean applyFirstStep(StoreCompanyDTO storeCompanyDTO);
 
     /**
+     * E 证通前置：仅保存/修改企业资料（不校验 E 证通）。
+     * 若会员已完成核身成功记录，则不允许再改。
+     * 申请中(APPLYING)等状态允许反复修改，直至实名完成。
+     *
+     * @param storeCompanyDTO 店铺公司信息
+     * @return 是否成功
+     */
+    boolean saveCompanyInfoBeforeEidVerify(StoreCompanyDTO storeCompanyDTO);
+
+    /**
      * 申请店铺第二步
      *
      * @param storeBankDTO 店铺银行信息

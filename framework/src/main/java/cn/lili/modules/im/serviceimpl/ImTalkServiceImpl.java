@@ -50,90 +50,113 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
     @Autowired
     private ImMessageService imMessageService;
 
-    @Override
-    public ImTalk getTalkByUser(String userId) {
-        LambdaQueryWrapper<ImTalk> queryWrapper = new LambdaQueryWrapper<>();
-        AuthUser currentUser = Objects.requireNonNull(UserContext.getCurrentUser());
-        //登录用户的Id
-        String selfId = "";
-        //查看当前用户角色对Id进行赋值
-        if (UserEnums.STORE.equals(currentUser.getRole())) {
-            selfId = currentUser.getStoreId();
-        } else if (UserEnums.MEMBER.equals(currentUser.getRole())) {
-            selfId = currentUser.getId();
+    /**
+     * 两方 userId（不论 userId1/userId2 顺序）是否已存在会话；有多条时取最近活跃的一条。
+     */
+    private ImTalk findExistingTalkBetween(String partyIdA, String partyIdB) {
+        if (CharSequenceUtil.isBlank(partyIdA) || CharSequenceUtil.isBlank(partyIdB)) {
+            return null;
         }
-        //小数在前保证永远是同一个对话
-        String finalSelfId = selfId;
-        queryWrapper.and(wq -> wq.eq(ImTalk::getUserId2, userId).eq(ImTalk::getUserId1, finalSelfId).or().eq(ImTalk::getUserId2, finalSelfId).eq(ImTalk::getUserId1, userId));
-        ImTalk imTalk = this.getOne(queryWrapper);
-        //如果没有聊天，则创建聊天
-        if (imTalk == null) {
-            //当自己为店铺时
-            if (UserEnums.STORE.equals(currentUser.getRole())) {
-                Store selfStore = storeService.getById(selfId);
-                //没有这个用户信息
-                Member other = memberService.getById(userId);
-                if (other == null) {
-                    return null;
+        LambdaQueryWrapper<ImTalk> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.and(wq -> wq.eq(ImTalk::getUserId1, partyIdA).eq(ImTalk::getUserId2, partyIdB)
+                .or(w2 -> w2.eq(ImTalk::getUserId1, partyIdB).eq(ImTalk::getUserId2, partyIdA)));
+        queryWrapper.orderByDesc(ImTalk::getLastTalkTime);
+        queryWrapper.last("LIMIT 1");
+        return this.getOne(queryWrapper, false);
+    }
+
+    /**
+     * 会员店主用买家端登录时 selfId 为会员 ID，历史会话可能是「店铺 ID ↔ 对方会员 ID」，需一并查找，避免重复建会话。
+     */
+    private ImTalk findTalkPreferStorePairIfOwnerMember(AuthUser currentUser, String selfMemberId, String opponentUserId) {
+        ImTalk imTalk = findExistingTalkBetween(selfMemberId, opponentUserId);
+        if (imTalk != null) {
+            return imTalk;
+        }
+        if (!UserEnums.MEMBER.equals(currentUser.getRole())) {
+            return null;
+        }
+        Member self = memberService.getById(selfMemberId);
+        if (self == null || !Boolean.TRUE.equals(self.getHaveStore())
+                || CharSequenceUtil.isBlank(self.getStoreId())) {
+            return null;
+        }
+        // 对方需是会员，且不是店铺侧误传的 storeId
+        Member opponent = memberService.getById(opponentUserId);
+        if (opponent == null || opponentUserId.equals(self.getStoreId())) {
+            return null;
+        }
+        return findExistingTalkBetween(self.getStoreId(), opponentUserId);
+    }
+
+    /**
+     * 未找到已有会话时新建（店主以 MEMBER 登录与买家沟通时，走「店铺↔会员」维度，与卖家端 STORE 账号一致）
+     */
+    private ImTalk createNewTalkIfAbsent(String userId, AuthUser currentUser, String selfId) {
+        ImTalk imTalk = null;
+        if (UserEnums.STORE.equals(currentUser.getRole())) {
+            Store selfStore = storeService.getById(selfId);
+            Member other = memberService.getById(userId);
+            if (other == null) {
+                return null;
+            }
+            imTalk = new ImTalk(other, selfStore);
+        } else if (UserEnums.MEMBER.equals(currentUser.getRole())) {
+            Member self = memberService.getById(selfId);
+            Member otherMember = memberService.getById(userId);
+            Store otherStore = storeService.getById(userId);
+            if (otherStore != null) {
+                imTalk = new ImTalk(self, otherStore);
+            } else if (otherMember != null) {
+                if (self != null && Boolean.TRUE.equals(self.getHaveStore())
+                        && CharSequenceUtil.isNotBlank(self.getStoreId())) {
+                    Store selfStore = storeService.getById(self.getStoreId());
+                    if (selfStore != null) {
+                        imTalk = new ImTalk(otherMember, selfStore);
+                    }
                 }
-                //自己为店铺其他人必定为用户
-                imTalk = new ImTalk(other, selfStore);
-            } else if (UserEnums.MEMBER.equals(currentUser.getRole())) {
-                //没有这个店铺信息
-                Member self = memberService.getById(selfId);
-                Member otherMember = memberService.getById(userId);
-                Store otherStore = storeService.getById(userId);
-                if (otherStore != null) {
-                    imTalk = new ImTalk(self, otherStore);
-                } else if (otherMember != null) {
+                if (imTalk == null) {
                     imTalk = new ImTalk(self, otherMember);
                 }
             }
+        }
+        if (imTalk != null) {
             this.save(imTalk);
         }
         return imTalk;
     }
 
     @Override
-    public ImTalkVO getTalkByUserId(String userId) {
-        LambdaQueryWrapper<ImTalk> queryWrapper = new LambdaQueryWrapper<>();
+    public ImTalk getTalkByUser(String userId) {
         AuthUser currentUser = Objects.requireNonNull(UserContext.getCurrentUser());
-        //登录用户的Id
         String selfId = "";
-        //查看当前用户角色对Id进行赋值
         if (UserEnums.STORE.equals(currentUser.getRole())) {
             selfId = currentUser.getStoreId();
         } else if (UserEnums.MEMBER.equals(currentUser.getRole())) {
             selfId = currentUser.getId();
         }
-        //小数在前保证永远是同一个对话
-        String finalSelfId = selfId;
-        queryWrapper.and(wq -> wq.eq(ImTalk::getUserId2, userId).eq(ImTalk::getUserId1, finalSelfId).or().eq(ImTalk::getUserId2, finalSelfId).eq(ImTalk::getUserId1, userId));
-        ImTalk imTalk = this.getOne(queryWrapper);
-        //如果没有聊天，则创建聊天
+        ImTalk imTalk = findTalkPreferStorePairIfOwnerMember(currentUser, selfId, userId);
         if (imTalk == null) {
-            //当自己为店铺时
-            if (UserEnums.STORE.equals(currentUser.getRole())) {
-                Store selfStore = storeService.getById(selfId);
-                //没有这个用户信息
-                Member other = memberService.getById(userId);
-                if (other == null) {
-                    return null;
-                }
-                //自己为店铺其他人必定为用户
-                imTalk = new ImTalk(other, selfStore);
-            } else if (UserEnums.MEMBER.equals(currentUser.getRole())) {
-                //没有这个店铺信息
-                Member self = memberService.getById(selfId);
-                Member otherMember = memberService.getById(userId);
-                Store otherStore = storeService.getById(userId);
-                if (otherStore != null) {
-                    imTalk = new ImTalk(self, otherStore);
-                } else if (otherMember != null) {
-                    imTalk = new ImTalk(self, otherMember);
-                }
-            }
-            this.save(imTalk);
+            imTalk = createNewTalkIfAbsent(userId, currentUser, selfId);
+        }
+        return imTalk;
+    }
+
+    @Override
+    public ImTalkVO getTalkByUserId(String userId) {
+        AuthUser currentUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        String selfId = "";
+        if (UserEnums.STORE.equals(currentUser.getRole())) {
+            selfId = currentUser.getStoreId();
+        } else if (UserEnums.MEMBER.equals(currentUser.getRole())) {
+            selfId = currentUser.getId();
+        }
+        ImTalk imTalk = findTalkPreferStorePairIfOwnerMember(currentUser, selfId, userId);
+        if (imTalk == null) {
+            imTalk = createNewTalkIfAbsent(userId, currentUser, selfId);
+        }
+        if (imTalk == null) {
+            return null;
         }
         return new ImTalkVO(imTalk, currentUser.getId());
     }
