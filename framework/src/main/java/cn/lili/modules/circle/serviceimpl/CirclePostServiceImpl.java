@@ -75,8 +75,10 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
                 circlePostComment.setContent(SensitiveWordsFilter.filter(circlePostComment.getContent()));
             });
             circlePost.setCommentList(circlePostCommentByList);
-            if(StringUtils.isNotEmpty(circlePost.getStoreId())){
-                circlePost.setIsCollection(storeCollectionService.isCollection(circlePost.getStoreId()));
+            if (StringUtils.isNotEmpty(circlePost.getStoreId())) {
+                AuthUser viewer = UserContext.getCurrentUser();
+                circlePost.setIsCollection(viewer != null
+                        && storeCollectionService.isCollection(circlePost.getStoreId()));
             }
         });
         return circlePostList;

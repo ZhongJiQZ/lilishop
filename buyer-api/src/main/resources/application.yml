@@ -105,6 +105,8 @@ ignored:
     - /buyer/other/pageData/**
     - /buyer/other/article/**
     - /buyer/goods/**
+    - /buyer/circle/post
+    - /buyer/circle/post/**
     - /buyer/store/**
     - /buyer/passport/connect/**
     - /buyer/members/**
