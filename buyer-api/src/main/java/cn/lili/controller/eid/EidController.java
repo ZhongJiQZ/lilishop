@@ -8,25 +8,14 @@ import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.utils.TencentEidUtil;
 import cn.lili.common.vo.ResultMessage;
-import cn.lili.modules.eid.entity.vo.EidVerifyResultVO;
-import cn.lili.modules.eid.service.MemberEidRecordService;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.service.MemberService;
-import cn.lili.modules.store.entity.dos.Store;
-import cn.lili.modules.store.entity.dos.StoreDetail;
-import cn.lili.modules.store.entity.dto.TryOnStaffApplyDTO;
-import cn.lili.modules.store.service.StoreDetailService;
-import cn.lili.modules.store.service.StoreService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tencentcloudapi.faceid.v20180301.models.DetectInfoText;
 import com.tencentcloudapi.faceid.v20180301.models.GetEidResultResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,10 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Objects;
 
 /**
- * 买家端 E 证通：资料提交 → 获取认证链接 → 查询结果并同步会员实名
- *
- * @author lensing
- * @since 2026/04/03 10:05 下午
+ * 买家端 E 证通：建议顺序
+ * <ol>
+ *   <li>{@code GET /buyer/eid/getToken} — 姓名+身份证号换核身链接</li>
+ *   <li>{@code GET /buyer/eid/getResult} — 用户完成核身后，凭 eidToken 拉结果并落库</li>
+ *   <li>{@code PUT /buyer/store/store/apply/first} — 提交店铺申请第一步（企业资料），与核身记录校验</li>
+ * </ol>
  */
 @RestController
 @Tag(name = "买家端,E证通接口")
@@ -45,72 +36,38 @@ import java.util.Objects;
 public class EidController {
 
     private final TencentEidUtil tencentEidUtil;
-    private final StoreService storeService;
-    private final StoreDetailService storeDetailService;
-    private final MemberEidRecordService memberEidRecordService;
     private final MemberService memberService;
 
-    public EidController(TencentEidUtil tencentEidUtil,
-                        StoreService storeService,
-                        StoreDetailService storeDetailService,
-                        MemberEidRecordService memberEidRecordService,
-                        MemberService memberService) {
+    public EidController(TencentEidUtil tencentEidUtil, MemberService memberService) {
         this.tencentEidUtil = tencentEidUtil;
-        this.storeService = storeService;
-        this.storeDetailService = storeDetailService;
-        this.memberEidRecordService = memberEidRecordService;
         this.memberService = memberService;
     }
 
-    @Operation(summary = "提交/修改试穿员资料（E证通前置）",
-            description = "未完成实名前可多次保存；已完成 E 证通核身成功则不可再改。不涉及调腾讯接口。")
-    @PostMapping("/company")
-    public ResultMessage<Object> saveCompany(@Valid @RequestBody TryOnStaffApplyDTO body) {
-        storeService.saveTryOnStaffBeforeEidVerify(body);
-        return ResultUtil.success();
-    }
-
-    @Operation(summary = "获取 E 证通认证链接",
-            description = "根据已保存的法人姓名、身份证号换取 url 与 eidToken；已实名成功则不可再获取。")
-    @GetMapping("/auth-url")
-    public ResultMessage<TencentEidUtil.EidTokenResult> getAuthUrl() {
-        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
-        if (memberEidRecordService.hasSuccessfulVerification(authUser.getId())) {
-            throw new ServiceException(ResultCode.EID_ALREADY_VERIFIED);
+    @Operation(summary = "获取 E 证通核身链接",
+            description = "参数：姓名 name、身份证号 idCard。返回 url、eidToken，前端拉起核身；未完成第三步申请前勿混用其它资料接口。")
+    @GetMapping("/getToken")
+    public ResultMessage<TencentEidUtil.EidTokenResult> getToken(
+            @Parameter(description = "姓名，与身份证一致", required = true) @RequestParam String name,
+            @Parameter(description = "18 位身份证号", required = true) @RequestParam String idCard) {
+        if (CharSequenceUtil.hasBlank(name, idCard)) {
+            throw new ServiceException(ResultCode.PARAMS_ERROR);
         }
-        String legalName;
-        String legalId;
-        Store store = storeService.getOne(new LambdaQueryWrapper<Store>().eq(Store::getMemberId, authUser.getId()), false);
-        if (store == null) {
-            throw new ServiceException(ResultCode.EID_COMPANY_REQUIRED);
-        }
-        StoreDetail detail = storeDetailService.getStoreDetail(store.getId());
-        if (detail == null) {
-            throw new ServiceException(ResultCode.EID_COMPANY_REQUIRED);
-        }
-        legalName = detail.getLegalName();
-        legalId = detail.getLegalId();
-        if (CharSequenceUtil.isBlank(legalName) || CharSequenceUtil.isBlank(legalId)) {
-            throw new ServiceException(ResultCode.EID_COMPANY_REQUIRED);
-        }
-        TencentEidUtil.EidTokenResult result = tencentEidUtil.getEidToken(legalName.trim(), legalId.trim());
+        TencentEidUtil.EidTokenResult result = tencentEidUtil.getEidToken(name.trim(), idCard.trim());
         return ResultUtil.data(result);
     }
 
-    @Operation(summary = "查询 E 证通认证结果",
-            description = "写入核身记录；若本次核身成功则同步会员姓名、证件号并返回成功标识。")
-    @GetMapping("/result")
-    public ResultMessage<EidVerifyResultVO> queryResult(
-            @Parameter(description = "获取认证链接接口返回的 eidToken", required = true)
-            @RequestParam String eidToken) {
+    @Operation(summary = "查询 E 证通核身结果",
+            description = "需登录。写入 li_member_eid_record；成功后回写会员姓名、证件号。再调 apply/first 提交入驻资料。")
+    @GetMapping("/getResult")
+    public ResultMessage<GetEidResultResponse> getResult(
+            @Parameter(description = "getToken 返回的 eidToken", required = true) @RequestParam String eidToken) {
         if (CharSequenceUtil.isBlank(eidToken)) {
             throw new ServiceException(ResultCode.PARAMS_ERROR);
         }
         AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
         GetEidResultResponse resp = tencentEidUtil.getEidResultAndSave(eidToken.trim(), authUser.getId());
         DetectInfoText text = resp.getText();
-        boolean verified = text != null && Objects.equals(text.getErrCode(), 0L);
-        if (verified) {
+        if (text != null && Objects.equals(text.getErrCode(), 0L)) {
             Member member = memberService.getById(authUser.getId());
             if (member != null && CharSequenceUtil.isNotEmpty(text.getName())) {
                 member.setFullName(text.getName());
@@ -119,11 +76,7 @@ public class EidController {
                 }
                 memberService.updateById(member);
             }
-            return ResultUtil.data(new EidVerifyResultVO(true, "认证成功"));
         }
-        String msg = text != null && CharSequenceUtil.isNotEmpty(text.getErrMsg())
-                ? text.getErrMsg()
-                : "认证未完成或失败";
-        return ResultUtil.data(new EidVerifyResultVO(false, msg));
+        return ResultUtil.data(resp);
     }
 }
