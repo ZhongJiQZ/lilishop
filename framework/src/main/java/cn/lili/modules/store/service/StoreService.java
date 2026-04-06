@@ -99,6 +99,11 @@ public interface StoreService extends IService<Store> {
     boolean saveCompanyInfoBeforeEidVerify(StoreCompanyDTO storeCompanyDTO);
 
     /**
+     * E 证通前置：保存试穿员资料（替代原企业资料第一步）。
+     */
+    boolean saveTryOnStaffBeforeEidVerify(TryOnStaffApplyDTO tryOnStaffApplyDTO);
+
+    /**
      * 申请店铺第二步
      *
      * @param storeBankDTO 店铺银行信息

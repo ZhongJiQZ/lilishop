@@ -14,7 +14,7 @@ import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.dos.StoreDetail;
-import cn.lili.modules.store.entity.dto.StoreCompanyDTO;
+import cn.lili.modules.store.entity.dto.TryOnStaffApplyDTO;
 import cn.lili.modules.store.service.StoreDetailService;
 import cn.lili.modules.store.service.StoreService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -62,11 +62,11 @@ public class EidController {
         this.memberService = memberService;
     }
 
-    @Operation(summary = "提交/修改企业资料（E证通前置）",
+    @Operation(summary = "提交/修改试穿员资料（E证通前置）",
             description = "未完成实名前可多次保存；已完成 E 证通核身成功则不可再改。不涉及调腾讯接口。")
-    @PutMapping("/company")
-    public ResultMessage<Object> saveCompany(@Valid @RequestBody StoreCompanyDTO storeCompanyDTO) {
-        storeService.saveCompanyInfoBeforeEidVerify(storeCompanyDTO);
+    @PostMapping("/company")
+    public ResultMessage<Object> saveCompany(@Valid @RequestBody TryOnStaffApplyDTO body) {
+        storeService.saveTryOnStaffBeforeEidVerify(body);
         return ResultUtil.success();
     }
 

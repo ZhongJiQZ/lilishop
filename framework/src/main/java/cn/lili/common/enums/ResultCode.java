@@ -558,6 +558,7 @@ public enum ResultCode {
     EID_INFO_NOT_MATCH(80701, "申请人信息与E证通实名信息不一致"),
     EID_ALREADY_VERIFIED(80702, "已完成实名认证，不可修改资料或重复获取认证链接"),
     EID_COMPANY_REQUIRED(80703, "请先提交企业资料并填写法人姓名与身份证号"),
+    EID_ID_CARD_DUPLICATE(80704, "该身份证号已被其他账号使用"),
 
     /**
      * 其他

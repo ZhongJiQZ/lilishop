@@ -425,6 +425,101 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         return doApplyFirstStep(storeCompanyDTO, false);
     }
 
+    @Override
+    public boolean saveTryOnStaffBeforeEidVerify(TryOnStaffApplyDTO dto) {
+        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        if (memberEidRecordService.hasSuccessfulVerification(authUser.getId())) {
+            throw new ServiceException(ResultCode.EID_ALREADY_VERIFIED);
+        }
+        return doApplyTryOnStaffFirstStep(dto);
+    }
+
+    private boolean doApplyTryOnStaffFirstStep(TryOnStaffApplyDTO dto) {
+        Store store = getStoreByMember();
+        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        assertTryOnStaffIdCardUnique(dto.getIdCard(), store != null ? store.getId() : null, authUser.getId());
+        if (store == null) {
+            Member member = memberService.getById(authUser.getId());
+            store = new Store(member);
+            applyTryOnStaffToStore(store, dto);
+            if (CharSequenceUtil.isBlank(store.getStoreCenter())) {
+                store.setStoreCenter("0,0");
+            }
+            store.setStoreDisable(StoreStatusEnum.APPLYING.name());
+            this.save(store);
+            StoreDetail detail = new StoreDetail();
+            detail.setStoreId(store.getId());
+            applyTryOnStaffToStoreDetail(detail, dto);
+            return storeDetailService.save(detail);
+        }
+        checkStoreStatusAllowCompanyEditBeforeEid(store);
+        applyTryOnStaffToStore(store, dto);
+        store.setStoreDisable(StoreStatusEnum.APPLYING.name());
+        this.updateById(store);
+        StoreDetail storeDetail = storeDetailService.getStoreDetail(store.getId());
+        if (storeDetail == null) {
+            storeDetail = new StoreDetail();
+            storeDetail.setStoreId(store.getId());
+            applyTryOnStaffToStoreDetail(storeDetail, dto);
+            return storeDetailService.save(storeDetail);
+        }
+        applyTryOnStaffToStoreDetail(storeDetail, dto);
+        return storeDetailService.updateById(storeDetail);
+    }
+
+    private void applyTryOnStaffToStore(Store store, TryOnStaffApplyDTO dto) {
+        store.setFullName(dto.getRealName());
+        store.setStoreName(dto.getNickname());
+        store.setStoreDesc(dto.getIntro());
+        store.setHeight(dto.getHeight());
+        store.setWeight(dto.getWeight());
+        store.setOccupation(dto.getOccupation());
+        store.setStoreLogo(dto.getPhotoUrl());
+    }
+
+    /**
+     * 试穿员身份证：18 位只允许在系统中出现一次（排除当前店铺明细、当前会员已绑定）。
+     */
+    private void assertTryOnStaffIdCardUnique(String idCard, String excludeStoreId, String excludeMemberId) {
+        if (CharSequenceUtil.isBlank(idCard)) {
+            return;
+        }
+        String normalized = idCard.trim().toUpperCase();
+        if (normalized.length() != 18) {
+            return;
+        }
+        LambdaQueryWrapper<StoreDetail> detailQuery = new LambdaQueryWrapper<StoreDetail>()
+                .apply("UPPER(legal_id) = {0}", normalized);
+        if (CharSequenceUtil.isNotEmpty(excludeStoreId)) {
+            detailQuery.ne(StoreDetail::getStoreId, excludeStoreId);
+        }
+        if (storeDetailService.count(detailQuery) > 0) {
+            throw new ServiceException(ResultCode.EID_ID_CARD_DUPLICATE);
+        }
+        LambdaQueryWrapper<Member> memberQuery = new LambdaQueryWrapper<Member>()
+                .apply("UPPER(id_card) = {0}", normalized);
+        if (CharSequenceUtil.isNotEmpty(excludeMemberId)) {
+            memberQuery.ne(Member::getId, excludeMemberId);
+        }
+        if (memberService.count(memberQuery) > 0) {
+            throw new ServiceException(ResultCode.EID_ID_CARD_DUPLICATE);
+        }
+    }
+
+    private void applyTryOnStaffToStoreDetail(StoreDetail detail, TryOnStaffApplyDTO dto) {
+        detail.setStoreName(dto.getNickname());
+        detail.setLegalName(dto.getRealName());
+        detail.setLegalId(CharSequenceUtil.isBlank(dto.getIdCard()) ? ""
+                : dto.getIdCard().trim().toUpperCase());
+        detail.setLegalPhoto(dto.getIdCardImageUrl());
+        detail.setLinkName(dto.getRealName());
+        detail.setLinkPhone(dto.getPhone());
+        detail.setCompanyName(dto.getNickname());
+        detail.setCompanyAddress("-");
+        detail.setCompanyPhone(dto.getPhone());
+        detail.setLicencePhoto(dto.getIdCardImageUrl());
+    }
+
     /**
      * @param strictStoreStatus true 时与历史逻辑一致：OPEN/CLOSED/APPLYING 不允许改第一步资料
      */
