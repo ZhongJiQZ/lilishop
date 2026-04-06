@@ -57,13 +57,13 @@ public class OrderPriceServiceImpl implements OrderPriceService {
     @SystemLogPoint(description = "修改订单价格", customerLog = "'订单编号:'+#orderSn +'，价格修改为：'+#orderPrice")
     @OrderLogPoint(description = "'订单['+#orderSn+']修改价格，修改后价格为['+#orderPrice+']'", orderSn = "#orderSn")
     public Order updatePrice(String orderSn, Double orderPrice) {
-
-        //修改订单金额
-        Order order = updateOrderPrice(orderSn, orderPrice);
-
-        //修改交易金额
-        tradeService.updateTradePrice(order.getTradeSn());
-        return order;
+        Order order = orderService.getBySn(orderSn);
+        if (order == null) {
+            throw new ServiceException(ResultCode.ORDER_NOT_EXIST);
+        }
+        Order updated = applyOrderPriceChange(order, orderPrice);
+        tradeService.updateTradePrice(updated.getTradeSn());
+        return updated;
     }
 
     @Override
@@ -79,38 +79,20 @@ public class OrderPriceServiceImpl implements OrderPriceService {
     }
 
 
-    /**
-     * 修改订单价格
-     * 1.判定订单是否支付
-     * 2.记录订单原始价格信息
-     * 3.计算修改的订单金额
-     * 4.修改订单价格
-     * 5.保存订单信息
-     *
-     * @param orderSn    订单编号
-     * @param orderPrice 修改订单金额
-     */
-    private Order updateOrderPrice(String orderSn, Double orderPrice) {
-        Order order = OperationalJudgment.judgment(orderService.getBySn(orderSn));
-        //判定是否支付
+    private Order applyOrderPriceChange(Order order, Double orderPrice) {
         if (order.getPayStatus().equals(PayStatusEnum.PAID.name())) {
             throw new ServiceException(ResultCode.ORDER_UPDATE_PRICE_ERROR);
         }
 
-        //获取订单价格信息
         PriceDetailDTO orderPriceDetailDTO = order.getPriceDetailDTO();
 
-        //修改订单价格
         order.setUpdatePrice(CurrencyUtil.sub(orderPrice, orderPriceDetailDTO.getOriginalPrice()));
 
-        //订单修改金额=使用订单原始金额-修改后金额
         orderPriceDetailDTO.setUpdatePrice(CurrencyUtil.sub(orderPrice, orderPriceDetailDTO.getOriginalPrice()));
         order.setFlowPrice(orderPriceDetailDTO.getFlowPrice());
-        //修改订单
         order.setPriceDetailDTO(orderPriceDetailDTO);
         orderService.updateById(order);
 
-        //修改子订单
         updateOrderItemPrice(order);
 
         return order;

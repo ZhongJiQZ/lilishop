@@ -179,7 +179,7 @@ public class OrderBuyerController {
     public ResultMessage<Map<String, Object>> updateOrderPrice(@PathVariable String orderSn,
                                                  @NotNull(message = "订单价格不能为空") @RequestParam Double price) {
         if (NumberUtil.isGreater(Convert.toBigDecimal(price), Convert.toBigDecimal(0))) {
-            // 1. 修改订单价格
+            OperationalJudgment.judgment(orderService.getBySn(orderSn));
             orderPriceService.updatePrice(orderSn, price);
             // 2. 拼接支付链接
             String payUrl = "/pages/order/orderDetail?sn=" + orderSn;

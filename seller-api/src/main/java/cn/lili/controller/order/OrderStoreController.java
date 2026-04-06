@@ -115,7 +115,7 @@ public class OrderStoreController {
     public ResultMessage<Map<String, Object>> updateOrderPrice(@PathVariable String orderSn,
                                                   @NotNull(message = "订单价格不能为空") @RequestParam Double orderPrice) {
         if (NumberUtil.isGreater(Convert.toBigDecimal(orderPrice), Convert.toBigDecimal(0))) {
-            // 1. 修改订单价格
+            OperationalJudgment.judgment(orderService.getBySn(orderSn));
             orderPriceService.updatePrice(orderSn, orderPrice);
             // 2. 拼接支付链接
             String payUrl = "/pages/order/orderDetail?sn=" + orderSn;

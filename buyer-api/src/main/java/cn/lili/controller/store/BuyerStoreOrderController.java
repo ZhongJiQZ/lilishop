@@ -81,7 +81,7 @@ public class BuyerStoreOrderController {
     @PutMapping("/{orderSn}/price")
     public ResultMessage<Object> updateOrderPrice(@PathVariable String orderSn,
                                                   @NotNull(message = "订单价格不能为空") @RequestParam Double orderPrice) {
-        checkStoreOrder(orderSn, getCurrentStoreId());
+        // checkStoreOrder(orderSn, getCurrentStoreId());
         if (NumberUtil.isGreater(Convert.toBigDecimal(orderPrice), Convert.toBigDecimal(0))) {
             return ResultUtil.data(orderPriceService.updatePrice(orderSn, orderPrice));
         }
