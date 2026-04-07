@@ -97,6 +97,10 @@ public class PromotionServiceImpl implements PromotionService {
     @Override
     public void removeByGoodsIds(String goodsIdsJsonStr) {
         List<String> goodsIds = JSON.parseArray(goodsIdsJsonStr, String.class);
+        if (goodsIds == null || goodsIds.isEmpty()) {
+            log.warn("[promotion] removeByGoodsIds 跳过空商品列表，避免 SQL IN ()，raw={}", goodsIdsJsonStr);
+            return;
+        }
         promotionGoodsService.deletePromotionGoodsByGoods(goodsIds);
         kanjiaActivityGoodsService.deleteByGoodsIds(goodsIds);
     }

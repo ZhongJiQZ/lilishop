@@ -283,6 +283,9 @@ public class KanjiaActivityGoodsServiceImpl extends AbstractPromotionsServiceImp
 
     @Override
     public void deleteByGoodsIds(List<String> goodsIds) {
+        if (goodsIds == null || goodsIds.isEmpty()) {
+            return;
+        }
         this.remove(new LambdaQueryWrapper<KanjiaActivityGoods>().in(KanjiaActivityGoods::getGoodsId, goodsIds));
     }
 

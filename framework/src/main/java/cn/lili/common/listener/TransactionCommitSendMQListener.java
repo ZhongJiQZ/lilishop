@@ -28,10 +28,26 @@ public class TransactionCommitSendMQListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void send(TransactionCommitSendMQEvent event) {
-        log.info("事务提交，发送mq信息!{}", event);
         String destination = event.getTopic() + ":" + event.getTag();
-        //发送订单变更mq消息
+        String payloadPreview = summarizePayload(event.getMessage());
+        log.info("[mq-producer] after_commit destination={} payloadType={} preview={} eventSource={}",
+                destination,
+                event.getMessage() != null ? event.getMessage().getClass().getSimpleName() : "null",
+                payloadPreview,
+                event.getSource());
         rocketMQTemplate.asyncSend(destination, event.getMessage(), RocketmqSendCallbackBuilder.commonCallback());
+    }
+
+    private static String summarizePayload(Object message) {
+        if (message == null) {
+            return "null";
+        }
+        String s = String.valueOf(message);
+        int max = 512;
+        if (s.length() <= max) {
+            return s;
+        }
+        return s.substring(0, max) + "...(truncated,totalLen=" + s.length() + ")";
     }
 
 

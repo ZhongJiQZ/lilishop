@@ -847,10 +847,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         rows.add("物流编号");
         writer.writeHeadRow(rows);
 
-        //存放下拉列表  ----店铺已选择物流公司列表
+        //存放下拉列表  ----店铺已选择物流公司列表 / 管理端为平台全部物流公司
         String[] logiList = logisticsName.toArray(new String[]{});
-        CellRangeAddressList cellRangeAddressList = new CellRangeAddressList(1, 200, 1, 1);
-        writer.addSelect(cellRangeAddressList, logiList);
+        if (logiList.length > 0) {
+            CellRangeAddressList cellRangeAddressList = new CellRangeAddressList(1, 200, 1, 1);
+            writer.addSelect(cellRangeAddressList, logiList);
+        }
 
         ServletOutputStream out = null;
         try {
@@ -871,15 +873,27 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchDeliver(MultipartFile files) {
+        List<OrderBatchDeliverDTO> orderBatchDeliverDTOList = parseBatchDeliverExcel(files);
+        checkBatchDeliver(orderBatchDeliverDTOList, true);
+        for (OrderBatchDeliverDTO orderBatchDeliverDTO : orderBatchDeliverDTOList) {
+            this.delivery(orderBatchDeliverDTO.getOrderSn(), orderBatchDeliverDTO.getLogisticsNo(), orderBatchDeliverDTO.getLogisticsId());
+        }
+    }
 
-        InputStream inputStream;
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchDeliverForManager(MultipartFile files) {
+        List<OrderBatchDeliverDTO> orderBatchDeliverDTOList = parseBatchDeliverExcel(files);
+        checkBatchDeliver(orderBatchDeliverDTOList, false);
+        for (OrderBatchDeliverDTO orderBatchDeliverDTO : orderBatchDeliverDTOList) {
+            this.delivery(orderBatchDeliverDTO.getOrderSn(), orderBatchDeliverDTO.getLogisticsNo(), orderBatchDeliverDTO.getLogisticsId());
+        }
+    }
+
+    private List<OrderBatchDeliverDTO> parseBatchDeliverExcel(MultipartFile files) {
         List<OrderBatchDeliverDTO> orderBatchDeliverDTOList = new ArrayList<>();
-        try {
-            inputStream = files.getInputStream();
-            //2.应用HUtool ExcelUtil获取ExcelReader指定输入流和sheet
+        try (InputStream inputStream = files.getInputStream()) {
             ExcelReader excelReader = ExcelUtil.getReader(inputStream);
-            //可以加上表头验证
-            //3.读取第二行到最后一行数据
             List<List<Object>> read = excelReader.read(1, excelReader.getRowCount());
             for (List<Object> objects : read) {
                 OrderBatchDeliverDTO orderBatchDeliverDTO = new OrderBatchDeliverDTO();
@@ -891,12 +905,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         } catch (Exception e) {
             throw new ServiceException(ResultCode.ORDER_BATCH_DELIVER_ERROR);
         }
-        //循环检查是否符合规范
-        checkBatchDeliver(orderBatchDeliverDTOList);
-        //订单批量发货
-        for (OrderBatchDeliverDTO orderBatchDeliverDTO : orderBatchDeliverDTOList) {
-            this.delivery(orderBatchDeliverDTO.getOrderSn(), orderBatchDeliverDTO.getLogisticsNo(), orderBatchDeliverDTO.getLogisticsId());
-        }
+        return orderBatchDeliverDTOList;
     }
 
 
@@ -922,21 +931,27 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
      *
      * @param list 待发货订单列表
      */
-    private void checkBatchDeliver(List<OrderBatchDeliverDTO> list) {
+    /**
+     * @param storeScoped true：店铺端，订单必须属于当前登录店铺；false：管理端，按订单号全局校验
+     */
+    private void checkBatchDeliver(List<OrderBatchDeliverDTO> list, boolean storeScoped) {
 
         Map<String, String> logisticsMap = logisticsService.list().stream()
-                .collect(Collectors.toMap(Logistics::getName, Logistics::getId));
+                .collect(Collectors.toMap(Logistics::getName, Logistics::getId, (a, b) -> a));
         for (OrderBatchDeliverDTO orderBatchDeliverDTO : list) {
-            //查看订单号是否存在-是否是当前店铺的订单
-            Order order = this.getOne(new LambdaQueryWrapper<Order>()
-                    .eq(Order::getStoreId, UserContext.getCurrentUser().getStoreId())
-                    .eq(Order::getSn, orderBatchDeliverDTO.getOrderSn()));
+            Order order;
+            if (storeScoped) {
+                order = this.getOne(new LambdaQueryWrapper<Order>()
+                        .eq(Order::getStoreId, UserContext.getCurrentUser().getStoreId())
+                        .eq(Order::getSn, orderBatchDeliverDTO.getOrderSn()));
+            } else {
+                order = this.getBySn(orderBatchDeliverDTO.getOrderSn());
+            }
             if (order == null) {
                 throw new ServiceException("订单编号：'" + orderBatchDeliverDTO.getOrderSn() + " '不存在");
             } else if (!order.getOrderStatus().equals(OrderStatusEnum.UNDELIVERED.name())) {
                 throw new ServiceException("订单编号：'" + orderBatchDeliverDTO.getOrderSn() + " '不能发货");
             }
-            //获取物流公司
             String logisticsId = logisticsMap.get(orderBatchDeliverDTO.getLogisticsName());
             if (logisticsId != null) {
                 orderBatchDeliverDTO.setLogisticsId(logisticsId);

@@ -1,6 +1,7 @@
 package cn.lili.controller.order;
 
 import cn.hutool.core.convert.Convert;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.lili.common.aop.annotation.PreventDuplicateSubmissions;
 import cn.lili.common.context.ThreadContextHolder;
@@ -16,6 +17,7 @@ import cn.lili.modules.order.order.entity.vo.OrderNumVO;
 import cn.lili.modules.order.order.entity.vo.OrderSimpleVO;
 import cn.lili.modules.order.order.service.OrderPriceService;
 import cn.lili.modules.order.order.service.OrderService;
+import cn.lili.modules.system.entity.dos.Logistics;
 import cn.lili.modules.system.service.LogisticsService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,10 +29,14 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 管理端,订单API
@@ -77,6 +83,26 @@ public class OrderManagerController {
     public void queryExportOrder(OrderSearchParams orderSearchParams) {
         HttpServletResponse response = ThreadContextHolder.getHttpResponse();
         orderService.queryExportOrder(response,orderSearchParams);
+    }
+
+    @Operation(summary = "下载批量发货导入模板（物流公司为平台已维护的全部公司）")
+    @GetMapping(value = "/downLoadDeliverExcel", produces = "application/octet-stream")
+    public void downLoadDeliverExcel() {
+        HttpServletResponse response = ThreadContextHolder.getHttpResponse();
+        List<String> logisticsNames = logisticsService.list().stream()
+                .map(Logistics::getName)
+                .filter(CharSequenceUtil::isNotEmpty)
+                .distinct()
+                .collect(Collectors.toList());
+        orderService.getBatchDeliverList(response, logisticsNames);
+    }
+
+    @PreventDuplicateSubmissions
+    @Operation(summary = "上传 Excel 批量发货（全平台订单，订单号全局唯一校验）")
+    @PostMapping(value = "/batchDeliver", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResultMessage<Object> batchDeliver(@RequestPart("files") MultipartFile files) {
+        orderService.batchDeliverForManager(files);
+        return ResultUtil.success(ResultCode.SUCCESS);
     }
 
 

@@ -45,6 +45,7 @@ import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,6 +61,8 @@ import java.util.stream.Collectors;
 public class GoodsMessageListener implements RocketMQListener<MessageExt> {
 
     private static final int BATCH_SIZE = 10;
+    /** 日志预览长度，避免一次打印超大 body */
+    private static final int MQ_BODY_PREVIEW_MAX = 512;
 
     /**
      * ES商品
@@ -126,6 +129,7 @@ public class GoodsMessageListener implements RocketMQListener<MessageExt> {
     @Override
     @RetryOperation
     public void onMessage(MessageExt messageExt) {
+        logGoodsMqInbound(messageExt);
 
         switch (GoodsTagsEnum.valueOf(messageExt.getTags())) {
             //查看商品
@@ -136,20 +140,22 @@ public class GoodsMessageListener implements RocketMQListener<MessageExt> {
             //生成索引
             case GENERATOR_GOODS_INDEX:
                 try {
-                    String goodsId = new String(messageExt.getBody());
+                    String goodsId = new String(messageExt.getBody(), StandardCharsets.UTF_8);
                     log.info("生成索引: {}", goodsId);
                     Goods goods = this.goodsService.getById(goodsId);
                     this.updateGoodsIndex(goods);
+                    logGoodsMqOk(messageExt, GoodsTagsEnum.GENERATOR_GOODS_INDEX, "goodsId=" + goodsId);
                 } catch (Exception e) {
-                    log.error("生成商品索引事件执行异常，商品信息: " + new String(messageExt.getBody()), e);
+                    logGoodsMqHandleError(messageExt, GoodsTagsEnum.GENERATOR_GOODS_INDEX.name(), e);
                 }
                 break;
             case GENERATOR_STORE_GOODS_INDEX:
                 try {
-                    String storeId = new String(messageExt.getBody());
+                    String storeId = new String(messageExt.getBody(), StandardCharsets.UTF_8);
                     this.updateGoodsIndex(storeId);
+                    logGoodsMqOk(messageExt, GoodsTagsEnum.GENERATOR_STORE_GOODS_INDEX, "storeId=" + storeId);
                 } catch (Exception e) {
-                    log.error("生成店铺商品索引事件执行异常，商品信息: " + new String(messageExt.getBody()), e);
+                    logGoodsMqHandleError(messageExt, GoodsTagsEnum.GENERATOR_STORE_GOODS_INDEX.name(), e);
                 }
                 break;
             case UPDATE_GOODS_INDEX_PROMOTIONS:
@@ -169,24 +175,26 @@ public class GoodsMessageListener implements RocketMQListener<MessageExt> {
                 break;
             case UPDATE_GOODS_INDEX:
                 try {
-                    String goodsIdsJsonStr = new String(messageExt.getBody());
+                    String goodsIdsJsonStr = new String(messageExt.getBody(), StandardCharsets.UTF_8);
                     GoodsSearchParams searchParams = new GoodsSearchParams();
                     searchParams.setId(ArrayUtil.join(JSON.parseArray(goodsIdsJsonStr, String.class).toArray(), ","));
                     List<Goods> goodsList = goodsService.queryListByParams(searchParams);
                     this.updateGoodsIndex(goodsList);
+                    logGoodsMqOk(messageExt, GoodsTagsEnum.UPDATE_GOODS_INDEX, "goodsCount=" + goodsList.size());
                 } catch (Exception e) {
-                    log.error("更新商品索引事件执行异常，商品信息: " + new String(messageExt.getBody()), e);
+                    logGoodsMqHandleError(messageExt, GoodsTagsEnum.UPDATE_GOODS_INDEX.name(), e);
                 }
                 break;
             case UPDATE_GOODS_INDEX_FIELD:
                 try {
-                    String updateIndexFieldsJsonStr = new String(messageExt.getBody());
+                    String updateIndexFieldsJsonStr = new String(messageExt.getBody(), StandardCharsets.UTF_8);
                     JSONObject updateIndexFields = JSON.parseObject(updateIndexFieldsJsonStr);
                     @SuppressWarnings("unchecked") Map<String, Object> queryFields = updateIndexFields.getObject("queryFields", Map.class);
                     @SuppressWarnings("unchecked") Map<String, Object> updateFields = updateIndexFields.getObject("updateFields", Map.class);
                     goodsIndexService.updateIndex(queryFields, updateFields);
+                    logGoodsMqOk(messageExt, GoodsTagsEnum.UPDATE_GOODS_INDEX_FIELD, "queryKeys=" + (queryFields != null ? queryFields.keySet() : null));
                 } catch (Exception e) {
-                    log.error("更新商品索引事件执行异常，商品信息: " + new String(messageExt.getBody()), e);
+                    logGoodsMqHandleError(messageExt, GoodsTagsEnum.UPDATE_GOODS_INDEX_FIELD.name(), e);
                 }
                 break;
 
@@ -198,7 +206,7 @@ public class GoodsMessageListener implements RocketMQListener<MessageExt> {
             //删除商品
             case GOODS_DELETE:
                 try {
-                    String goodsIdsJsonStr = new String(messageExt.getBody());
+                    String goodsIdsJsonStr = new String(messageExt.getBody(), StandardCharsets.UTF_8);
                     for (String goodsId : JSON.parseArray(goodsIdsJsonStr, String.class)) {
                          // Find all SKU IDs for this goods and delete them
                          List<GoodsSku> goodsSkus = goodsSkuService.getGoodsSkuListByGoodsId(goodsId);
@@ -209,8 +217,9 @@ public class GoodsMessageListener implements RocketMQListener<MessageExt> {
                      }
 
                     promotionService.removeByGoodsIds(goodsIdsJsonStr);
+                    logGoodsMqOk(messageExt, GoodsTagsEnum.GOODS_DELETE, "bodyLen=" + goodsIdsJsonStr.length());
                 } catch (Exception e) {
-                    log.error("删除商品索引事件执行异常，商品信息: " + new String(messageExt.getBody()), e);
+                    logGoodsMqHandleError(messageExt, GoodsTagsEnum.GOODS_DELETE.name(), e);
                 }
                 break;
             case DOWN:
@@ -225,17 +234,18 @@ public class GoodsMessageListener implements RocketMQListener<MessageExt> {
                 break;
             case STORE_GOODS_DELETE:
                 try {
-                    String storeId = new String(messageExt.getBody());
+                    String storeId = new String(messageExt.getBody(), StandardCharsets.UTF_8);
                     // Find all SKU IDs for this store and delete them
                     List<GoodsSku> storeGoodsSkus = goodsSkuService.getGoodsSkuListByGoodsId(storeId);
                     if (CollUtil.isNotEmpty(storeGoodsSkus)) {
                         skuIds = storeGoodsSkus.stream().map(GoodsSku::getId).collect(Collectors.toList());
                         goodsIndexService.deleteIndexByIds(skuIds);
                     }
+                    logGoodsMqOk(messageExt, GoodsTagsEnum.STORE_GOODS_DELETE, "storeId=" + storeId + " skuDeleted=" + (CollUtil.isNotEmpty(storeGoodsSkus) ? storeGoodsSkus.size() : 0));
                 } catch (RetryException re) {
                     throw re;
                 } catch (Exception e) {
-                    log.error("删除店铺商品索引事件执行异常，商品信息: " + new String(messageExt.getBody()), e);
+                    logGoodsMqHandleError(messageExt, GoodsTagsEnum.STORE_GOODS_DELETE.name(), e);
                 }
                 break;
             //同步商品分类名称
@@ -513,5 +523,57 @@ public class GoodsMessageListener implements RocketMQListener<MessageExt> {
                 log.error("商品SkuId为[" + goodsCompleteMessage.getGoodsId() + "的商品不存在，更新商品失败！");
             }
         }
+    }
+
+    /**
+     * 入站打点：grep {@code [goods-mq] inbound}；结合 {@code reconsumeTimes} 判断是否重试、是否可能与“假成功”同时出现。
+     */
+    private void logGoodsMqInbound(MessageExt m) {
+        if (m == null) {
+            return;
+        }
+        byte[] raw = m.getBody();
+        String body = raw == null ? "" : new String(raw, StandardCharsets.UTF_8);
+        String preview = body.length() > MQ_BODY_PREVIEW_MAX
+                ? body.substring(0, MQ_BODY_PREVIEW_MAX) + "...(truncated,totalLen=" + body.length() + ")"
+                : body;
+        log.info("[goods-mq] inbound topic={} tag={} msgId={} queueOffset={} keys={} reconsumeTimes={} queueId={} bornTimestamp={} bodyLen={} bodyPreview={}",
+                m.getTopic(),
+                m.getTags(),
+                m.getMsgId(),
+                m.getQueueOffset(),
+                m.getKeys(),
+                m.getReconsumeTimes(),
+                m.getQueueId(),
+                m.getBornTimestamp(),
+                body.length(),
+                preview);
+    }
+
+    private void logGoodsMqOk(MessageExt m, GoodsTagsEnum tag, String detail) {
+        if (m == null) {
+            return;
+        }
+        log.info("[goods-mq] ok tag={} msgId={} reconsumeTimes={} {}", tag.name(), m.getMsgId(), m.getReconsumeTimes(), detail);
+    }
+
+    /**
+     * 业务 catch 后仍记 ERROR，并带上 msgId / reconsumeTimes，便于和入站、生产端日志对齐。
+     */
+    private void logGoodsMqHandleError(MessageExt m, String tagName, Throwable e) {
+        if (m == null) {
+            log.error("[goods-mq] handle_error tag={} messageExt=null", tagName, e);
+            return;
+        }
+        int bodyLen = m.getBody() == null ? 0 : m.getBody().length;
+        log.error("[goods-mq] handle_error tag={} msgId={} queueOffset={} keys={} reconsumeTimes={} queueId={} bodyLen={} swallowed=true",
+                tagName,
+                m.getMsgId(),
+                m.getQueueOffset(),
+                m.getKeys(),
+                m.getReconsumeTimes(),
+                m.getQueueId(),
+                bodyLen,
+                e);
     }
 }

@@ -301,6 +301,13 @@ public interface OrderService extends IService<Order> {
      */
     void batchDeliver(MultipartFile files);
 
+    /**
+     * 管理端订单批量发货（按订单编号全局匹配，不限定店铺）
+     *
+     * @param files 上传的 Excel，格式与店铺端一致
+     */
+    void batchDeliverForManager(MultipartFile files);
+
 
     /**
      * 获取订单实际支付的总金额
