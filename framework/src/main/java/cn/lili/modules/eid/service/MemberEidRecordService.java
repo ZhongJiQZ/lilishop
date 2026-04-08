@@ -1,6 +1,8 @@
 package cn.lili.modules.eid.service;
 
 import cn.lili.modules.eid.entity.dos.MemberEidRecord;
+import cn.lili.modules.eid.entity.dto.MemberEidRecordPageDTO;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
@@ -15,4 +17,6 @@ public interface MemberEidRecordService extends IService<MemberEidRecord> {
      * 是否已有 E 证通核身成功记录
      */
     boolean hasSuccessfulVerification(String memberId);
+
+    IPage<MemberEidRecord> queryMemberEidRecordByParams(MemberEidRecordPageDTO page);
 }
