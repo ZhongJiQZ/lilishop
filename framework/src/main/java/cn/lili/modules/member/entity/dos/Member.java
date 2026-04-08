@@ -159,12 +159,15 @@ public class Member extends BaseEntity {
         this.totalCoin = new BigDecimal("0");
         this.isVip = 0;
         this.inviteStatus = 0;
-        // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
-        this.inviteCode = Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase();
+        // 生成6位绝对不重复邀请码（雪花算法）
+        this.inviteCode = String.format("%6s", Long.toString((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L, 36).toUpperCase()).replace(' ', '0');
     }
 
     public static void main(String[] args) {
-        System.out.println(Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase());
+        for(int i=0;i<200;i++){
+            String inviteCode = String.format("%6s", Long.toString((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L, 36).toUpperCase()).replace(' ', '0');
+            System.out.println(inviteCode);
+        }
     }
 
     public Member(String username, String password, String face, String nickName, Integer sex, String mobile) {
