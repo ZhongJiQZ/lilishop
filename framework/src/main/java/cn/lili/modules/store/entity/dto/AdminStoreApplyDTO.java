@@ -165,4 +165,13 @@ public class AdminStoreApplyDTO {
     @Schema(description = "结算周期")
     private String settlementCycle;
 
+    @Schema(description = "身高(cm)")
+    private Integer height;
+
+    @Schema(description = "体重(斤)")
+    private Integer weight;
+
+    @Schema(description = "职业")
+    private String occupation;
+
 }

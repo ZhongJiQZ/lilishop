@@ -148,7 +148,7 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
                 throw new ServiceException(ResultCode.USER_STATUS_ERROR);
             }
             if (CharSequenceUtil.isBlank(member.getInviteCode())) {
-                member.setInviteCode(Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase());
+                member.setInviteCode(String.format("%6s", Long.toString(Math.abs((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L), 36).toUpperCase()).replace(' ', '0'));
                 this.updateById(member);
             }
             return member;

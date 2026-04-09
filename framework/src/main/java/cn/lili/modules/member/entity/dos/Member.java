@@ -160,12 +160,12 @@ public class Member extends BaseEntity {
         this.isVip = 0;
         this.inviteStatus = 0;
         // 生成6位绝对不重复邀请码（雪花算法）
-        this.inviteCode = String.format("%6s", Long.toString((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L, 36).toUpperCase()).replace(' ', '0');
+        this.inviteCode = String.format("%6s", Long.toString(Math.abs((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L), 36).toUpperCase()).replace(' ', '0');
     }
 
     public static void main(String[] args) {
         for(int i=0;i<200;i++){
-            String inviteCode = String.format("%6s", Long.toString((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L, 36).toUpperCase()).replace(' ', '0');
+            String inviteCode = String.format("%6s", Long.toString(Math.abs((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L), 36).toUpperCase()).replace(' ', '0');
             System.out.println(inviteCode);
         }
     }
@@ -187,6 +187,6 @@ public class Member extends BaseEntity {
         this.isVip = 0;
         this.inviteStatus = 0;
         // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
-        this.inviteCode = Long.toString(IdUtil.getSnowflakeNextId(), 36).toUpperCase();
+        this.inviteCode = String.format("%6s", Long.toString(Math.abs((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L), 36).toUpperCase()).replace(' ', '0');
     }
 }
