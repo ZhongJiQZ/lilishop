@@ -77,4 +77,11 @@ public interface ImMessageService extends IService<ImMessage> {
      * @return 未读消息数
      */
     Long unreadMessageTotalCount();
+
+    /**
+     * 获取当前用户的未读IM消息总数（包括试穿员和会员）
+     * @param accessToken
+     * @return 未读消息数
+     */
+    Long getUnreadCount(String accessToken);
 }

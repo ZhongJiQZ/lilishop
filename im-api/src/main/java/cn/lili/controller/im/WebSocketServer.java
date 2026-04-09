@@ -213,6 +213,10 @@ public class WebSocketServer {
                 if (StrUtil.isNotBlank(fromSessionId) && !fromSessionId.equals(toSessionId)) {
                     sendMessage(fromSessionId, new MessageVO(MessageResultType.MESSAGE, imMessage));
                 }
+
+                // 给【接收消息的人】推送最新未读数量
+                sendMessage(messageOperation.getTo(),
+                        new MessageVO(MessageResultType.UN_READ, imMessageService.getUnreadCount(accessToken)));
                 break;
             case READ:
                 if (StrUtil.isNotEmpty(messageOperation.getContext())) {
