@@ -2,6 +2,7 @@ package cn.lili.modules.im.service;
 
 import cn.lili.modules.im.entity.dos.ImMessage;
 import cn.lili.modules.im.entity.dto.MessageQueryParams;
+import cn.lili.modules.permission.entity.dos.AdminUser;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -70,7 +71,7 @@ public interface ImMessageService extends IService<ImMessage> {
      * @param toUserId 接受者ID
      * @return 扣除成功/失败
      */
-    boolean deductPlatformCoin(String fromUserId, String toUserId);
+    boolean deductPlatformCoin(String fromUserId, String toUserId, AdminUser adminUser);
 
     /**
      * 获取当前用户的未读IM消息总数（试穿员消息入口用）

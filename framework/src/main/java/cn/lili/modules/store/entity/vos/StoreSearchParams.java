@@ -40,6 +40,12 @@ public class StoreSearchParams extends PageVO implements Serializable {
     @Schema(description = "结束时间")
     private String endDate;
 
+    @Schema(description = "代理人ID")
+    private String agentId;
+
+    @Schema(description = "代理人名称")
+    private String agentName;
+
     public <T> QueryWrapper<T> queryWrapper() {
         QueryWrapper<T> queryWrapper = new QueryWrapper<>();
         if (StringUtils.isNotEmpty(storeName)) {
@@ -47,6 +53,12 @@ public class StoreSearchParams extends PageVO implements Serializable {
         }
         if (StringUtils.isNotEmpty(memberName)) {
             queryWrapper.like("member_name", memberName);
+        }
+        if (StringUtils.isNotEmpty(agentId)) {
+            queryWrapper.like("agent_id", agentId);
+        }
+        if (StringUtils.isNotEmpty(agentName)) {
+            queryWrapper.like("agent_name", agentName);
         }
         if (StringUtils.isNotEmpty(storeDisable)) {
             queryWrapper.eq("store_disable", storeDisable);

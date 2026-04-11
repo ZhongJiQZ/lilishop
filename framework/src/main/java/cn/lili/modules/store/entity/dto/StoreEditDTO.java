@@ -186,6 +186,12 @@ public class StoreEditDTO {
     @Schema(description = "职业")
     private String occupation;
 
+    @Schema(description = "代理人ID")
+    private String agentId;
+
+    @Schema(description = "代理人名称")
+    private String agentName;
+
     public String getSalesConsigneeName() {
         return getDefaultValue(salesConsigneeName);
     }

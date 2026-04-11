@@ -84,6 +84,13 @@ public class ImTalkController {
         return ResultUtil.data(imTalkService.getStoreTalkList(imTalkQueryParams));
     }
 
+    @Operation(summary = "分页获取所有商家聊天")
+    @Parameter(name = "imTalkQueryParams", description = "聊天查询参数", required = true)
+    @GetMapping("/store/all/list")
+    public ResultMessage<List<ImTalkVO>> getAllStoreTalkList(IMTalkQueryParams imTalkQueryParams) {
+        return ResultUtil.data(imTalkService.getAllStoreTalkList(imTalkQueryParams));
+    }
+
     @Operation(summary = "删除聊天")
     @Parameter(name = "id", description = "聊天ID", required = true)
     @DeleteMapping("/{id}")

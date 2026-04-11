@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 聊天 业务实现
@@ -237,7 +238,7 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         }
 
         Map<String, Member> memberMap;
-        if(memberIds!=null && memberIds.size()>0){
+        if (memberIds != null && memberIds.size() > 0) {
             memberMap = memberService.lambdaQuery()
                     .in(Member::getId, memberIds)
                     .select(Member::getStoreId, Member::getNickName, Member::getFace)
@@ -395,6 +396,85 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
                 currentUser.getId(), randomStore.getId(), randomStore.getStoreName(), imTalk.getId());
 
         return vo;
+    }
+
+    @Override
+    public List<ImTalkVO> getAllStoreTalkList(IMTalkQueryParams imTalkQueryParams) {
+        AuthUser authUser = UserContext.getCurrentUser();
+        if (authUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+
+        LambdaQueryWrapper<ImTalk> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.orderByDesc(ImTalk::getLastTalkTime);
+        List<ImTalk> imTalks = this.list(queryWrapper);
+
+        boolean isNotAdmin = !"admin".equals(authUser.getUsername());
+        String currentAgentId = authUser.getId();
+
+        List<ImTalkVO> imTalkVOList = imTalks.stream()
+                // 1. 按店铺ID分组
+                .collect(Collectors.groupingBy(imTalk -> {
+                    if (Boolean.TRUE.equals(imTalk.getStoreFlag1())) {
+                        return imTalk.getUserId1();
+                    } else if (Boolean.TRUE.equals(imTalk.getStoreFlag2())) {
+                        return imTalk.getUserId2();
+                    }
+                    return "0";
+                }))
+                // 2. 按店铺ID正序排序分组
+                .entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                // 3. 展开每组内的对话（flatMap）
+                .flatMap(entry -> {
+                    String storeId = entry.getKey();
+                    List<ImTalk> storeTalks = entry.getValue();
+
+                    // ====== 关键权限过滤：非admin只保留自己代理的店铺 ======
+                    Store store = storeService.getById(storeId);
+                    if (store == null) {
+                        return Stream.empty();
+                    }
+
+                    // 不是管理员，并且不是自己代理的店铺 → 过滤掉
+                    if (isNotAdmin && !currentAgentId.equals(store.getAgentId())) {
+                        return Stream.empty();
+                    }
+
+                    // 4. 同店铺内按最后聊天时间倒序
+                    return storeTalks.stream()
+                            .sorted(Comparator.comparing(ImTalk::getLastTalkTime, Comparator.reverseOrder()))
+                            // 5. 转VO + 拼接名称
+                            .map(imTalk -> {
+                                ImTalkVO vo = new ImTalkVO(imTalk, storeId);
+                                vo.setLastTalkMessage(SensitiveWordsFilter.filter(imTalk.getLastTalkMessage()));
+
+                                // 拼接：会员名（店铺名）
+//                                Store store = storeService.getById(storeId);
+                                if (store != null) {
+                                    vo.setName(vo.getName() + "（" + store.getStoreName() + "-" + store.getAgentName() + "）");
+                                }
+                                return vo;
+                            });
+                })
+                .collect(Collectors.toList());
+
+        getUnread(imTalkVOList);
+        return imTalkVOList;
+    }
+
+    // ====================== 工具方法：根据 talkId 获取 storeId ======================
+    private String getStoreIdFromImTalk(List<ImTalk> imTalkList, String talkId) {
+        for (ImTalk imTalk : imTalkList) {
+            if (imTalk.getId().equals(talkId)) {
+                if (Boolean.TRUE.equals(imTalk.getStoreFlag1())) {
+                    return imTalk.getUserId1();
+                } else if (Boolean.TRUE.equals(imTalk.getStoreFlag2())) {
+                    return imTalk.getUserId2();
+                }
+            }
+        }
+        return "0";
     }
 
     /**

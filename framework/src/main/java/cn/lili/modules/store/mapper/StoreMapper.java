@@ -37,7 +37,7 @@ public interface StoreMapper extends BaseMapper<Store> {
      * @param queryWrapper 查询条件
      * @return 店铺VO分页列表
      */
-    @Select("select s.*,mobile from li_store as s left join li_member m on m.id=s.member_id ${ew.customSqlSegment}")
+    @Select("select s.*,mobile,legal_name from li_store as s left join li_member m on m.id=s.member_id left join li_store_detail d on d.store_id=s.id ${ew.customSqlSegment}")
     IPage<StoreVO> getStoreList(IPage<StoreVO> page, @Param(Constants.WRAPPER) Wrapper<StoreVO> queryWrapper);
 
 

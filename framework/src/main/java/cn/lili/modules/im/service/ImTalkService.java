@@ -57,4 +57,10 @@ public interface ImTalkService extends IService<ImTalk> {
     List<ImTalkVO> getStoreTalkList(IMTalkQueryParams imTalkQueryParams);
 
     ImTalkVO matchByUser();
+
+    /**
+     * 获取所有商家聊天列表
+     * @return 商家聊天列表
+     */
+    List<ImTalkVO> getAllStoreTalkList(IMTalkQueryParams imTalkQueryParams);
 }

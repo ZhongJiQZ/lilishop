@@ -16,6 +16,7 @@ import cn.lili.modules.im.mapper.ImTalkMapper;
 import cn.lili.modules.im.service.ImMessageService;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.service.MemberService;
+import cn.lili.modules.permission.entity.dos.AdminUser;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.service.StoreService;
 import cn.lili.modules.system.entity.dos.Setting;
@@ -142,8 +143,12 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
     }
 
     @Override
-    public boolean deductPlatformCoin(String fromUserId, String toUserId) {
+    public boolean deductPlatformCoin(String fromUserId, String toUserId, AdminUser adminUser) {
         try {
+            if(adminUser != null) {
+                log.info("管理员发送消息，不消耗预存款");
+                return true;
+            }
             // 1. 判断是否为商家/管理员 → 不扣费
             Store store = storeService.getById(fromUserId);
             if(store != null) {

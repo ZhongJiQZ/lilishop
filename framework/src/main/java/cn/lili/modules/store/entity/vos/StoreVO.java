@@ -24,4 +24,7 @@ public class StoreVO extends Store {
     @Schema(description = "手机号码")
     private String mobile;
 
+    @Schema(description = "姓名")
+    private String legalName;
+
 }

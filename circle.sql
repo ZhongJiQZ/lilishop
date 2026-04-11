@@ -291,3 +291,8 @@ CREATE TABLE `li_member_eid_record`
     `update_time`   DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员E证通核身记录';
+
+-- 添加代理人姓名字段
+ALTER TABLE li_store ADD COLUMN `agent_name` varchar(255) NULL COMMENT '代理人';
+-- 添加代理人ID字段
+ALTER TABLE li_store ADD COLUMN `agent_id` varchar(255) NULL COMMENT '代理人ID';
