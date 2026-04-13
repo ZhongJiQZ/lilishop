@@ -412,7 +412,13 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
 
     @Override
     public boolean applyFirstStep(StoreCompanyDTO storeCompanyDTO) {
-        checkEidVerify(storeCompanyDTO);
+        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        Member member = memberService.getById(authUser.getId());
+        //需要人脸认证判断
+        if(member != null && member.getNoFaceAuth() == 0){
+            //校验用户是否完成E证通核身
+            checkEidVerify(storeCompanyDTO);
+        }
         return doApplyFirstStep(storeCompanyDTO, true);
     }
 

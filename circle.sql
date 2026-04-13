@@ -296,3 +296,5 @@ CREATE TABLE `li_member_eid_record`
 ALTER TABLE li_store ADD COLUMN `agent_name` varchar(255) NULL COMMENT '代理人';
 -- 添加代理人ID字段
 ALTER TABLE li_store ADD COLUMN `agent_id` varchar(255) NULL COMMENT '代理人ID';
+
+ALTER TABLE li_member ADD COLUMN `no_face_auth` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否免人脸认证 0=否(需要认证) 1=是(无需认证)';

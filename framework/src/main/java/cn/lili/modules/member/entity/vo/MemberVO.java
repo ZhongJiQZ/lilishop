@@ -86,6 +86,9 @@ public class MemberVO implements Serializable {
     @Schema(description = "是否是VIP会员 0=普通用户 1=会员用户")
     private Integer isVip;
 
+    @Schema(description = "是否免人脸认证 0=否(需要认证) 1=是(无需认证)")
+    private Integer noFaceAuth;
+
     @Schema(description = "邀请码")
     private String inviteCode;
 

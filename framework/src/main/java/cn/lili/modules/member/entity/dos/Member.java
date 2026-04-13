@@ -144,6 +144,9 @@ public class Member extends BaseEntity {
     @Schema(description = "职业")
     private String occupation;
 
+    @Schema(description = "是否免人脸认证 0=否(需要认证) 1=是(无需认证)")
+    private Integer noFaceAuth;
+
     public Member(String username, String password, String mobile) {
         this.username = username;
         this.password = password;
@@ -158,6 +161,7 @@ public class Member extends BaseEntity {
         this.coin = new BigDecimal("0");
         this.totalCoin = new BigDecimal("0");
         this.isVip = 0;
+        this.noFaceAuth = 0;
         this.inviteStatus = 0;
         // 生成6位绝对不重复邀请码（雪花算法）
         this.inviteCode = String.format("%6s", Long.toString(Math.abs((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L), 36).toUpperCase()).replace(' ', '0');
@@ -185,6 +189,7 @@ public class Member extends BaseEntity {
         this.coin = new BigDecimal("0");
         this.totalCoin = new BigDecimal("0");
         this.isVip = 0;
+        this.noFaceAuth = 0;
         this.inviteStatus = 0;
         // 生成唯一邀请码（雪花ID → 8位内唯一短邀请码）
         this.inviteCode = String.format("%6s", Long.toString(Math.abs((IdUtil.getSnowflakeNextId() * 1125899221L) % 2176782336L), 36).toUpperCase()).replace(' ', '0');
