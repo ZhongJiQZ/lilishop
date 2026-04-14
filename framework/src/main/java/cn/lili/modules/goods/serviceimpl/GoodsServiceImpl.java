@@ -209,7 +209,9 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (totalStock == 0) {
             goods.setMarketEnable(GoodsStatusEnum.DOWN.name());
         }
-        
+        // 添加模板商品固定免审核并直接上架
+        goods.setAuthFlag(GoodsAuthEnum.PASS.name());
+        goods.setMarketEnable(GoodsStatusEnum.UPPER.name());
         //添加商品
         this.save(goods);
         //添加商品sku信息
@@ -651,6 +653,9 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (CharSequenceUtil.isEmpty(targetStoreId)) {
             throw new ServiceException(ResultCode.STORE_NOT_EXIST);
         }
+        // 校验是否已经复制过
+        checkGoodsIsCopied(templateGoodsId, targetStoreId);
+
         Goods templateGoods = this.checkExist(templateGoodsId);
         String templateStoreId = this.getTemplateStoreId();
         if (!templateStoreId.equals(templateGoods.getStoreId())) {
@@ -659,6 +664,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         GoodsVO templateGoodsVO = this.getGoodsVO(templateGoodsId);
         GoodsOperationDTO goodsOperationDTO = this.buildMinimalCopyDTO(templateGoods, templateGoodsVO, targetStoreId);
         Goods goods = new Goods(goodsOperationDTO);
+        goods.setCopyParentId(templateGoodsId);//复制来源模板ID
         this.checkGoodsByStore(goods, targetStoreId);
         // 模板复制固定免审核并直接上架
         goods.setAuthFlag(GoodsAuthEnum.PASS.name());
@@ -672,6 +678,20 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
             this.goodsGalleryService.add(goodsOperationDTO.getGoodsGalleryList(), goods.getId());
         }
         this.generateEs(goods);
+    }
+
+    /**
+     * 校验当前商品是否已被复制（防止重复复制）
+     */
+    private void checkGoodsIsCopied(String templateGoodsId, String targetStoreId) {
+        LambdaQueryWrapper<Goods> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Goods::getStoreId, targetStoreId);    // 试穿员店铺ID
+        queryWrapper.eq(Goods::getCopyParentId, templateGoodsId); // 复制来源商品ID
+        queryWrapper.eq(Goods::getDeleteFlag, false);
+        long count = this.count(queryWrapper);
+        if (count > 0) {
+            throw new ServiceException("该试穿员已复制过此商品，不可重复复制！");
+        }
     }
 
     private GoodsOperationDTO buildMinimalCopyDTO(Goods templateGoods, GoodsVO templateGoodsVO, String targetStoreId) {

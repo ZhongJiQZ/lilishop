@@ -298,3 +298,5 @@ ALTER TABLE li_store ADD COLUMN `agent_name` varchar(255) NULL COMMENT '代理�
 ALTER TABLE li_store ADD COLUMN `agent_id` varchar(255) NULL COMMENT '代理人ID';
 
 ALTER TABLE li_member ADD COLUMN `no_face_auth` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否免人脸认证 0=否(需要认证) 1=是(无需认证)';
+
+ALTER TABLE li_goods ADD COLUMN copy_parent_id VARCHAR(64) NULL COMMENT '复制来源模板ID';

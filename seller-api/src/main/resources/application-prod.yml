@@ -15,3 +15,5 @@ lili:
       schema: http
     logstash:
       server: 127.0.0.1:4560
+rocketmq:
+  name-server: 127.0.0.1:9876

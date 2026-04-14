@@ -123,4 +123,11 @@ public class GoodsManagerController {
         return ResultUtil.data(goods);
     }
 
+    @Operation(summary = "删除商品")
+    @PutMapping("/delete")
+    @Parameter(name = "goodsId", description = "商品ID", required = true)
+    public ResultMessage<Object> deleteGoods(@RequestParam List<String> goodsId) {
+        goodsService.deleteGoods(goodsId);
+        return ResultUtil.success();
+    }
 }

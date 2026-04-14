@@ -16,7 +16,6 @@ lili:
     logstash:
       server: 127.0.0.1:4560
 rocketmq:
-  nameServer: 127.0.0.1:9876
   name-server: 127.0.0.1:9876
 xxl:
   job:

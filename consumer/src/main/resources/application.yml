@@ -202,7 +202,6 @@ lili:
       after-sale-topic: lili_after_sale_topic
       after-sale-group: lili_after_sale_group
 rocketmq:
-  nameServer: 192.168.31.100:9876
   name-server: 192.168.31.100:9876
   producer:
     group: lili_group

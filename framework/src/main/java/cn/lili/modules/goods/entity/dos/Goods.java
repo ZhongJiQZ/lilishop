@@ -1,10 +1,8 @@
 package cn.lili.modules.goods.entity.dos;
 
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.http.HtmlUtil;
-import com.alibaba.fastjson2.JSON;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.exception.ServiceException;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
@@ -13,6 +11,7 @@ import cn.lili.modules.goods.entity.enums.GoodsSalesModeEnum;
 import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
 import cn.lili.modules.goods.entity.enums.GoodsTypeEnum;
 import cn.lili.mybatis.BaseEntity;
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.xkcoding.http.util.StringUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -39,6 +38,9 @@ import java.util.Map;
 public class Goods extends BaseEntity {
 
     private static final long serialVersionUID = 370683495251252601L;
+
+    @Schema(description = "复制来源模板ID")
+    private String copyParentId;
 
     @Schema(description = "商品名称")
     @NotEmpty(message = "商品名称不能为空")
