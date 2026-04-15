@@ -188,7 +188,13 @@ public class StoreDetailServiceImpl extends ServiceImpl<StoreDetailMapper, Store
 
     @Override
     public StoreBasicInfoVO getStoreBasicInfoDTO(String storeId) {
-        return this.baseMapper.getStoreBasicInfoDTO(storeId);
+        StoreBasicInfoVO vo = this.baseMapper.getStoreBasicInfoDTO(storeId);
+        if (vo != null) {
+            // li_store.goods_num 可能未同步；买家端展示「已上架且审核通过」的商品数（与 countStoreGoodsNum 一致）
+            long num = goodsService.countStoreGoodsNum(storeId);
+            vo.setGoodsNum(num > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) num);
+        }
+        return vo;
     }
 
     @Override
