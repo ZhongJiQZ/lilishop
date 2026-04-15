@@ -56,6 +56,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -72,6 +73,7 @@ import java.util.stream.Collectors;
  * @author pikachu
  * @since 2020-02-23 15:18:56
  */
+@Slf4j
 @Service
 public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements GoodsService {
 
@@ -268,6 +270,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         }
         cache.remove(CachePrefix.GOODS.getPrefix() + goodsId);
         this.generateEs(goods);
+        this.propagateTemplateDerivedGoodsPricesIfApplicable(goodsId);
     }
 
 
@@ -691,6 +694,102 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         long count = this.count(queryWrapper);
         if (count > 0) {
             throw new ServiceException("该试穿员已复制过此商品，不可重复复制！");
+        }
+    }
+
+    /**
+     * 模板店铺修改商品后：将 SPU 销售价、各 SKU 销售价同步到所有 copy_parent_id 指向本商品的从属商品（仅价格）。
+     */
+    private void propagateTemplateDerivedGoodsPricesIfApplicable(String editedGoodsId) {
+        Goods g = this.getById(editedGoodsId);
+        if (g == null || Boolean.TRUE.equals(g.getDeleteFlag())) {
+            return;
+        }
+        if (CharSequenceUtil.isNotEmpty(g.getCopyParentId())) {
+            return;
+        }
+        String templateStoreId;
+        try {
+            templateStoreId = getTemplateStoreId();
+        } catch (ServiceException e) {
+            return;
+        }
+        if (!templateStoreId.equals(g.getStoreId())) {
+            return;
+        }
+        propagatePricesFromTemplateToDerivedGoods(editedGoodsId);
+    }
+
+    private void propagatePricesFromTemplateToDerivedGoods(String templateGoodsId) {
+        Goods templateGoods = this.getById(templateGoodsId);
+        if (templateGoods == null) {
+            return;
+        }
+        List<GoodsSku> templateSkus = goodsSkuService.list(new LambdaQueryWrapper<GoodsSku>()
+                .eq(GoodsSku::getGoodsId, templateGoodsId)
+                .eq(GoodsSku::getDeleteFlag, false));
+        List<Goods> derivedList = this.list(new LambdaQueryWrapper<Goods>()
+                .eq(Goods::getCopyParentId, templateGoodsId)
+                .eq(Goods::getDeleteFlag, false));
+        if (CollUtil.isEmpty(derivedList)) {
+            return;
+        }
+        for (Goods child : derivedList) {
+            child.setPrice(templateGoods.getPrice());
+            this.updateById(child);
+            List<GoodsSku> childSkus = goodsSkuService.list(new LambdaQueryWrapper<GoodsSku>()
+                    .eq(GoodsSku::getGoodsId, child.getId())
+                    .eq(GoodsSku::getDeleteFlag, false));
+            if (CollUtil.isNotEmpty(childSkus)) {
+                for (GoodsSku cs : childSkus) {
+                    GoodsSku match = findMatchingTemplateSku(templateSkus, cs);
+                    if (match != null) {
+                        cs.setPrice(match.getPrice());
+                    }
+                }
+                goodsSkuService.updateBatchById(childSkus);
+                for (GoodsSku cs : childSkus) {
+                    goodsSkuService.clearCache(cs.getId());
+                }
+            }
+            cache.remove(CachePrefix.GOODS.getPrefix() + child.getId());
+            this.generateEs(this.getById(child.getId()));
+        }
+        log.info("模板商品[{}]价格已同步至 {} 个从属商品（copy_parent_id）", templateGoodsId, derivedList.size());
+    }
+
+    private static GoodsSku findMatchingTemplateSku(List<GoodsSku> templateSkus, GoodsSku child) {
+        for (GoodsSku t : templateSkus) {
+            if (skuSpecsMatch(t, child)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+    private static boolean skuSpecsMatch(GoodsSku tmpl, GoodsSku child) {
+        if (CharSequenceUtil.isNotBlank(tmpl.getSimpleSpecs()) && CharSequenceUtil.isNotBlank(child.getSimpleSpecs())) {
+            return tmpl.getSimpleSpecs().trim().equals(child.getSimpleSpecs().trim());
+        }
+        return canonicalSpecsJson(tmpl.getSpecs()).equals(canonicalSpecsJson(child.getSpecs()));
+    }
+
+    private static String canonicalSpecsJson(String specs) {
+        if (CharSequenceUtil.isBlank(specs)) {
+            return "";
+        }
+        try {
+            JSONObject o = JSON.parseObject(specs);
+            if (o == null || o.size() == 0) {
+                return "";
+            }
+            TreeMap<String, Object> sorted = new TreeMap<>();
+            for (String k : o.keySet()) {
+                sorted.put(k, o.get(k));
+            }
+            return JSON.toJSONString(sorted);
+        } catch (Exception e) {
+            return specs.trim();
         }
     }
 

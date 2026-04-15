@@ -5,11 +5,20 @@ import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
 import cn.lili.common.exception.ServiceException;
 import cn.lili.common.vo.PageVO;
+import cn.lili.modules.goods.entity.dos.GoodsSku;
+import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
+import cn.lili.modules.goods.entity.enums.GoodsAuthEnum;
+import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
+import cn.lili.modules.goods.service.GoodsSkuService;
 import cn.lili.modules.search.entity.dos.EsGoodsIndex;
 import cn.lili.modules.search.entity.dos.EsGoodsRelatedInfo;
 import cn.lili.modules.search.entity.dto.EsGoodsSearchDTO;
 import cn.lili.modules.search.service.EsGoodsSearchAbstractService;
 import cn.lili.modules.search.service.EsGoodsSearchService;
+import cn.lili.mybatis.util.PageUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -26,6 +35,8 @@ import org.springframework.data.elasticsearch.core.query.highlight.HighlightFiel
 import org.springframework.data.elasticsearch.core.query.highlight.HighlightParameters;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,6 +66,9 @@ public class EsGoodsSearchServiceImpl extends EsGoodsSearchAbstractService imple
      */
     @Autowired
     private Cache<Object> cache;
+
+    @Autowired
+    private GoodsSkuService goodsSkuService;
 
     @Override
     public SearchPage<EsGoodsIndex> searchGoods(EsGoodsSearchDTO searchDTO, PageVO pageVo) {
@@ -124,20 +138,82 @@ public class EsGoodsSearchServiceImpl extends EsGoodsSearchAbstractService imple
 
     @Override
     public Page<EsGoodsIndex> searchGoodsByPage(EsGoodsSearchDTO searchDTO, PageVO pageVo) {
-        // 判断商品索引是否存在
-        if (!restTemplate.indexOps(EsGoodsIndex.class).exists()) {
-            return null;
+        if (pageVo == null) {
+            pageVo = new PageVO();
+        }
+        if (searchDTO != null && CharSequenceUtil.isNotBlank(searchDTO.getKeyword())) {
+            cache.incrementScore(CachePrefix.HOT_WORD.getPrefix(), searchDTO.getKeyword());
         }
 
-        SearchPage<EsGoodsIndex> esGoodsIndices = this.searchGoods(searchDTO, pageVo);
+        GoodsSearchParams params = new GoodsSearchParams();
+        if (searchDTO != null) {
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getStoreId())) {
+                params.setStoreId(searchDTO.getStoreId());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getKeyword())) {
+                params.setGoodsName(searchDTO.getKeyword());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getCategoryId())) {
+                params.setCategoryPath(searchDTO.getCategoryId());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getStoreCatId())) {
+                params.setStoreCategoryPath(searchDTO.getStoreCatId());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getPrice())) {
+                params.setPrice(searchDTO.getPrice());
+            }
+            if (searchDTO.getRecommend() != null) {
+                params.setRecommend(searchDTO.getRecommend());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getGoodsType())) {
+                params.setGoodsType(searchDTO.getGoodsType());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getSalesModel())) {
+                params.setSalesModel(searchDTO.getSalesModel());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getIds())) {
+                params.setId(searchDTO.getIds());
+            }
+        }
+
+        QueryWrapper<GoodsSku> qw = params.queryWrapper();
+        String storeId = searchDTO != null ? searchDTO.getStoreId() : null;
+        if (CharSequenceUtil.isNotEmpty(storeId)) {
+            qw.apply("goods_id IN (SELECT id FROM li_goods WHERE store_id = {0} AND delete_flag = {1} AND auth_flag = {2} AND market_enable = {3})",
+                    storeId, false, GoodsAuthEnum.PASS.name(), GoodsStatusEnum.UPPER.name());
+        } else {
+            qw.apply("goods_id IN (SELECT id FROM li_goods WHERE delete_flag = {0} AND auth_flag = {1} AND market_enable = {2})",
+                    false, GoodsAuthEnum.PASS.name(), GoodsStatusEnum.UPPER.name());
+        }
+
+        if (searchDTO != null) {
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getBrandId())) {
+                qw.in("brand_id", Arrays.asList(searchDTO.getBrandId().split("@")));
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getNeGoodsType())) {
+                qw.ne("goods_type", searchDTO.getNeGoodsType());
+            }
+            if (CharSequenceUtil.isNotEmpty(searchDTO.getNeSalesModel())) {
+                qw.ne("sales_model", searchDTO.getNeSalesModel());
+            }
+        }
+
+        Page<GoodsSku> mpPage = PageUtil.initPage(pageVo);
+        if (CharSequenceUtil.isBlank(pageVo.getSort())) {
+            mpPage.addOrder(OrderItem.desc("create_time"));
+        }
+
+        IPage<GoodsSku> skuPage = goodsSkuService.page(mpPage, qw);
+
         Page<EsGoodsIndex> resultPage = new Page<>();
-        if (esGoodsIndices != null && !esGoodsIndices.getContent().isEmpty()) {
-            List<EsGoodsIndex> collect = esGoodsIndices.getSearchHits().getSearchHits().stream().map(SearchHit::getContent).collect(Collectors.toList());
-            resultPage.setRecords(collect);
-            resultPage.setPages(esGoodsIndices.getTotalPages());
-            resultPage.setCurrent(esGoodsIndices.getNumber() + 1L);
-            resultPage.setSize(esGoodsIndices.getSize());
-            resultPage.setTotal(esGoodsIndices.getTotalElements());
+        resultPage.setCurrent(skuPage.getCurrent());
+        resultPage.setSize(skuPage.getSize());
+        resultPage.setTotal(skuPage.getTotal());
+        resultPage.setPages(skuPage.getPages());
+        if (skuPage.getRecords() == null || skuPage.getRecords().isEmpty()) {
+            resultPage.setRecords(Collections.emptyList());
+        } else {
+            resultPage.setRecords(skuPage.getRecords().stream().map(EsGoodsIndex::new).collect(Collectors.toList()));
         }
         return resultPage;
     }

@@ -7,17 +7,21 @@ import cn.lili.common.exception.ServiceException;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.goods.entity.dos.Goods;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
+import cn.lili.modules.goods.entity.dto.BatchCopyTemplateGoodsDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
 import cn.lili.modules.goods.entity.enums.GoodsAuthEnum;
 import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
+import cn.lili.modules.goods.entity.vos.BatchCopyTemplateGoodsResultVO;
 import cn.lili.modules.goods.entity.vos.GoodsNumVO;
 import cn.lili.modules.goods.entity.vos.GoodsVO;
 import cn.lili.modules.goods.service.GoodsService;
 import cn.lili.modules.goods.service.GoodsSkuService;
+import cn.lili.modules.goods.serviceimpl.AdminTemplateGoodsBatchCopyService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -44,6 +48,25 @@ public class GoodsManagerController {
      */
     @Autowired
     private GoodsSkuService goodsSkuService;
+
+    @Autowired
+    private AdminTemplateGoodsBatchCopyService adminTemplateGoodsBatchCopyService;
+
+    @Operation(summary = "分页获取模板店铺商品（管理端批量复制用）")
+    @GetMapping("/template/list")
+    public ResultMessage<IPage<Goods>> templateGoodsList(GoodsSearchParams goodsSearchParams) {
+        goodsSearchParams.setStoreId(goodsService.getTemplateStoreId());
+        return ResultUtil.data(goodsService.queryByParams(goodsSearchParams));
+    }
+
+    @PreventDuplicateSubmissions
+    @Operation(summary = "批量将模板商品复制到多个店铺（多店铺×多商品）")
+    @PostMapping("/template/batch-copy")
+    public ResultMessage<BatchCopyTemplateGoodsResultVO> batchCopyTemplateGoods(@Valid @RequestBody BatchCopyTemplateGoodsDTO dto) {
+        BatchCopyTemplateGoodsResultVO vo = adminTemplateGoodsBatchCopyService.batchCopy(
+                dto.getTemplateGoodsIds(), dto.getTargetStoreIds());
+        return ResultUtil.data(vo);
+    }
 
     @Operation(summary = "分页获取")
     @Parameter(name = "goodsSearchParams", description = "商品查询参数")

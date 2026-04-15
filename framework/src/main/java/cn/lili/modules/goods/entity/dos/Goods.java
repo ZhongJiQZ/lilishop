@@ -39,7 +39,7 @@ public class Goods extends BaseEntity {
 
     private static final long serialVersionUID = 370683495251252601L;
 
-    @Schema(description = "复制来源模板ID")
+    @Schema(description = "复制来源模板商品ID（防重复复制；模板改价时用于查找从属商品跟价）")
     private String copyParentId;
 
     @Schema(description = "商品名称")
