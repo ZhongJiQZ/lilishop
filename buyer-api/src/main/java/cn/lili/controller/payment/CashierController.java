@@ -7,6 +7,7 @@ import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.payment.entity.enums.PaymentClientEnum;
 import cn.lili.modules.payment.entity.enums.PaymentMethodEnum;
 import cn.lili.modules.payment.kit.CashierSupport;
+import cn.lili.modules.payment.kit.minipay.MiniPaySupport;
 import cn.lili.modules.payment.kit.dto.PayParam;
 import cn.lili.modules.payment.kit.params.dto.CashierParam;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 买家端,收银台接口
@@ -34,12 +37,14 @@ public class CashierController {
 
     @Autowired
     private CashierSupport cashierSupport;
+    @Autowired
+    private MiniPaySupport miniPaySupport;
 
 
     @Parameter(name = "client", description = "客户端类型")
     @GetMapping("/tradeDetail")
     @Operation(summary = "获取支付详情")
-    public ResultMessage paymentParams(@Validated PayParam payParam) {
+    public ResultMessage<CashierParam> paymentParams(@Validated PayParam payParam) {
         CashierParam cashierParam = cashierSupport.cashierParam(payParam);
         return ResultUtil.data(cashierParam);
     }
@@ -52,7 +57,7 @@ public class CashierController {
     })
     @GetMapping("/pay/{paymentMethod}/{paymentClient}")
     @Operation(summary = "支付")
-    public ResultMessage payment(
+    public ResultMessage<Object> payment(
             HttpServletRequest request,
             HttpServletResponse response,
             @PathVariable String paymentMethod,
@@ -99,5 +104,17 @@ public class CashierController {
     @GetMapping("/result")
     public ResultMessage<Boolean> paymentResult(PayParam payParam) {
         return ResultUtil.data(cashierSupport.paymentResult(payParam));
+    }
+
+    @Operation(summary = "聚合微信小程序支付")
+    @GetMapping("/miniPay/mp")
+    public ResultMessage<Map<String, String>> miniProgramPay(@Validated PayParam payParam) {
+        return ResultUtil.data(miniPaySupport.miniProgramPay(payParam));
+    }
+
+    @Operation(summary = "聚合微信小程序支付异步通知")
+    @RequestMapping(value = "/miniPay/notify", method = {RequestMethod.GET, RequestMethod.POST})
+    public String miniPayNotify(HttpServletRequest request) {
+        return miniPaySupport.notify(request);
     }
 }
