@@ -21,3 +21,6 @@ xxl:
   job:
     admin:
       addresses: http://127.0.0.1:9001/xxl-job-admin
+#    executor:
+#      ip: host.docker.internal
+#      port: 8891

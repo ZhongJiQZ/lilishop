@@ -24,9 +24,9 @@ public class ManagerMemberEditDTO {
     @NotNull(message = "用户ID不能为空")
     private String id;
 
-//    @Schema(description = "会员用户名,用户名不能进行修改", requiredMode = Schema.RequiredMode.REQUIRED)
-//    @NotNull(message = "会员用户名不能为空")
-//    private String username;
+    @Schema(description = "会员用户名,用户名不能进行修改", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotNull(message = "会员用户名不能为空")
+    private String username;
 
     @Schema(description = "会员密码")
     private String password;

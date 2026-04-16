@@ -10,6 +10,8 @@ import cn.lili.modules.store.entity.vos.StoreTradeRankingVO;
 import cn.lili.modules.store.entity.vos.StoreVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -155,4 +157,14 @@ public interface StoreService extends IService<Store> {
      */
     IPage<StoreTradeRankingVO> getTradeRanking(PageVO page);
 
+    /**
+     * 下载导入列表
+     * @param response
+     */
+    void download(HttpServletResponse response);
+
+    /**
+     * 导入店铺
+     */
+    void importExcel(MultipartFile files) throws Exception;
 }

@@ -3,6 +3,8 @@ package cn.lili.modules.store.serviceimpl;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.poi.excel.ExcelReader;
+import cn.hutool.poi.excel.ExcelUtil;
 import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
 import cn.lili.common.enums.ResultCode;
@@ -29,6 +31,8 @@ import cn.lili.modules.member.entity.dto.CollectionDTO;
 import cn.lili.modules.member.service.ClerkService;
 import cn.lili.modules.member.service.FootprintService;
 import cn.lili.modules.member.service.MemberService;
+import cn.lili.modules.permission.entity.dos.AdminUser;
+import cn.lili.modules.permission.mapper.AdminUserMapper;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.entity.dos.StoreDetail;
 import cn.lili.modules.store.entity.dto.*;
@@ -53,13 +57,24 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.hssf.usermodel.DVConstraint;
+import org.apache.poi.hssf.usermodel.HSSFDataValidation;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -80,6 +95,13 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
     @Autowired
     @Lazy
     private MemberService memberService;
+
+    /**
+     * 管理员
+     */
+    @Autowired
+    @Lazy
+    private AdminUserMapper adminUserMapper;
 
     /**
      * 店员
@@ -121,6 +143,8 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
 
     @Autowired
     private Cache cache;
+
+    private  static final int COLUMS = 12;
 
     @Override
     public IPage<StoreVO> findByConditionPage(StoreSearchParams storeSearchParams, PageVO page) {
@@ -706,6 +730,241 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
         }
 
         return resultPage;
+    }
+
+    @Override
+    public void download(HttpServletResponse response) {
+        //创建Excel工作薄对象
+        Workbook workbook = new HSSFWorkbook();
+        //生成一个表格 设置：页签
+        Sheet sheet = workbook.createSheet("导入模板");
+        //创建第1行
+        Row row0 = sheet.createRow(0);
+        row0.createCell(0).setCellValue("会员名称");
+        row0.createCell(1).setCellValue("代理人名称");
+        row0.createCell(2).setCellValue("试穿员姓名");
+        row0.createCell(3).setCellValue("试穿员昵称");
+        row0.createCell(4).setCellValue("身高(cm)");
+        row0.createCell(5).setCellValue("体重(斤)");
+        row0.createCell(6).setCellValue("职业");
+        row0.createCell(7).setCellValue("试穿员证件号");
+        row0.createCell(8).setCellValue("联系电话");
+        row0.createCell(9).setCellValue("证件电子版");
+        row0.createCell(10).setCellValue("试穿员照片");
+        row0.createCell(11).setCellValue("试穿员简介");
+
+
+        sheet.setColumnWidth(0, 7000);
+        sheet.setColumnWidth(1, 7000);
+        sheet.setColumnWidth(2, 7000);
+        sheet.setColumnWidth(3, 7000);
+        sheet.setColumnWidth(4, 7000);
+        sheet.setColumnWidth(5, 3000);
+        sheet.setColumnWidth(6, 7000);
+        sheet.setColumnWidth(7, 3000);
+        sheet.setColumnWidth(8, 3000);
+        sheet.setColumnWidth(9, 3000);
+        sheet.setColumnWidth(10, 3000);
+        sheet.setColumnWidth(11, 7000);
+
+        QueryWrapper<Member> queryWrapper = Wrappers.query();
+        //按照会员状态查询
+        queryWrapper.eq("have_store",false);
+        queryWrapper.isNull("store_id");
+        queryWrapper.eq("disabled",1);
+        queryWrapper.orderByDesc("create_time");
+        List<Member> memberList = this.memberService.list(queryWrapper);
+
+        QueryWrapper<AdminUser> adminQueryWrapper = Wrappers.query();
+        //按照会员状态查询
+        adminQueryWrapper.eq("status",true);
+        adminQueryWrapper.orderByDesc("create_time");
+        List<AdminUser> adminList = this.adminUserMapper.selectList(adminQueryWrapper);
+
+        List<String> memberNameList = new ArrayList<>();
+
+        //先简单写，后期优化
+        //循环三次添加值
+        //循环列表，存放ID-分类名称
+        for (Member member : memberList) {
+            memberNameList.add(member.getId() + "-" + member.getUsername() + "-" + member.getNickName());
+        }
+
+        List<String> adminNameList = new ArrayList<>();
+        //循环列表，存放ID-运费模板名称
+        for (AdminUser adminUser : adminList) {
+            adminNameList.add(adminUser.getId() + "-" + adminUser.getUsername());
+        }
+
+        //添加分类
+        this.excelTo255(workbook, "hiddenMemberVO", 1, memberNameList.toArray(new String[]{}), 1, 5000, 0, 0);
+
+        //添加运费模板
+        this.excelTo255(workbook, "hiddenAdminVO", 2, adminNameList.toArray(new String[]{}), 1, 5000, 1, 1);
+
+        ServletOutputStream out = null;
+        try {
+            //设置公共属性，列表名称
+            response.setContentType("application/vnd.ms-excel;charset=utf-8");
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode("下载店铺导入模板", "UTF8") + ".xls");
+            out = response.getOutputStream();
+            workbook.write(out);
+        } catch (Exception e) {
+            log.error("下载店铺导入模板错误", e);
+        } finally {
+            try {
+                out.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void importExcel(MultipartFile files) throws Exception {
+        InputStream inputStream;
+        List<AdminStoreApplyDTO> adminStoreApplyDTOList = new ArrayList<>();
+
+        inputStream = files.getInputStream();
+        ExcelReader excelReader = ExcelUtil.getReader(inputStream);
+        // 读取列表
+        // 检测数据-查看分类、模板、计量单位是否存在
+        List<List<Object>> read = excelReader.read(1, excelReader.getRowCount());
+        for (List<Object> objects : read) {
+            AdminStoreApplyDTO adminStoreApplyDTO = new AdminStoreApplyDTO();
+            if (objects.size() < COLUMS){
+                throw new ServiceException("请将表格内容填写完全！");
+            }
+            for (Object object : objects) {
+                if( CharSequenceUtil.isEmpty(object.toString()) || CharSequenceUtil.isBlank(object.toString())){
+                    throw new ServiceException("请将表格内容填写完全！");
+                }
+            }
+
+            String memberId = null;
+            try {
+                memberId = objects.get(0).toString().substring(0, objects.get(0).toString().indexOf("-"));
+            } catch (Exception e) {
+                throw new ServiceException("请选择会员");
+            }
+
+            Member member = memberService.getById(memberId);
+            if (member == null) {
+                throw new ServiceException("会员不存在：" + objects.get(0).toString().substring(objects.get(0).toString().indexOf("-")));
+            }
+            if (member.getHaveStore() && member.getStoreId() != null) {
+                throw new ServiceException("已经拥有店铺!" + objects.get(0).toString().substring(objects.get(0).toString().indexOf("-")));
+            }
+
+            String adminId = null;
+            try {
+                adminId = objects.get(1).toString().substring(0, objects.get(0).toString().indexOf("-"));
+            } catch (Exception e) {
+                throw new ServiceException("请选择代理人");
+            }
+            AdminUser adminUser = adminUserMapper.selectById(adminId);
+            if (adminUser == null) {
+                throw new ServiceException("代理人不存在：" + objects.get(1).toString().substring(objects.get(3).toString().indexOf("-")));
+            }
+
+            adminStoreApplyDTO.setMemberId(memberId);
+            adminStoreApplyDTO.setAgentId(adminUser.getId());
+            adminStoreApplyDTO.setAgentName(adminUser.getUsername());
+            adminStoreApplyDTO.setLegalName(objects.get(2).toString());
+            adminStoreApplyDTO.setStoreName(objects.get(3).toString());
+            adminStoreApplyDTO.setHeight(Integer.valueOf(objects.get(4).toString()));
+            adminStoreApplyDTO.setWeight(Integer.valueOf(objects.get(5).toString()));
+            adminStoreApplyDTO.setOccupation(objects.get(6).toString());
+            adminStoreApplyDTO.setLegalId(objects.get(7).toString());
+            adminStoreApplyDTO.setLinkPhone(objects.get(8).toString());
+            adminStoreApplyDTO.setLegalPhoto(objects.get(9).toString());
+            adminStoreApplyDTO.setStoreLogo(objects.get(10).toString());
+            adminStoreApplyDTO.setStoreDesc(objects.get(11).toString());
+
+            adminStoreApplyDTOList.add(adminStoreApplyDTO);
+        }
+        //添加店铺
+        addStoreList(adminStoreApplyDTOList);
+    }
+
+    /**
+     * 添加店铺
+     *
+     * @param adminStoreApplyDTOList
+     */
+    private void addStoreList(List<AdminStoreApplyDTO> adminStoreApplyDTOList) {
+        for (AdminStoreApplyDTO adminStoreApplyDTO : adminStoreApplyDTOList) {
+            //添加商品
+            Store store = this.add(adminStoreApplyDTO);
+            if(store!=null){
+                //申请店铺
+                StoreCompanyDTO storeCompanyDTO = new StoreCompanyDTO();
+                BeanUtil.copyProperties(adminStoreApplyDTO, storeCompanyDTO);
+                store.setStoreDisable(StoreStatusEnum.OPEN.name());
+                store.setFullName(adminStoreApplyDTO.getLegalName());
+                this.updateById(store);
+                StoreDetail storeDetail = storeDetailService.getStoreDetail(store.getId());
+                if (storeDetail == null) {
+                    storeDetail = new StoreDetail();
+                    storeDetail.setStoreId(store.getId());
+                    BeanUtil.copyProperties(storeCompanyDTO, storeDetail);
+                    storeDetailService.save(storeDetail);
+                }
+                BeanUtil.copyProperties(storeCompanyDTO, storeDetail);
+                storeDetailService.updateById(storeDetail);
+            }
+        }
+
+    }
+
+    /**
+     * 表格
+     *
+     * @param workbook       表格
+     * @param sheetName      sheet名称
+     * @param sheetNameIndex 开始
+     * @param sheetData      数据
+     * @param firstRow       开始行
+     * @param lastRow        结束行
+     * @param firstCol       开始列
+     * @param lastCol        结束列
+     */
+    private void excelTo255(Workbook workbook, String sheetName, int sheetNameIndex, String[] sheetData,
+                            int firstRow, int lastRow, int firstCol, int lastCol) {
+        //将下拉框数据放到新的sheet里，然后excle通过新的sheet数据加载下拉框数据
+        Sheet hidden = workbook.createSheet(sheetName);
+
+        //创建单元格对象
+        Cell cell = null;
+        //遍历我们上面的数组，将数据取出来放到新sheet的单元格中
+        for (int i = 0, length = sheetData.length; i < length; i++) {
+            //取出数组中的每个元素
+            String name = sheetData[i];
+            //根据i创建相应的行对象（说明我们将会把每个元素单独放一行）
+            Row row = hidden.createRow(i);
+            //创建每一行中的第一个单元格
+            cell = row.createCell(0);
+            //然后将数组中的元素赋值给这个单元格
+            cell.setCellValue(name);
+        }
+        // 创建名称，可被其他单元格引用
+        Name namedCell = workbook.createName();
+        namedCell.setNameName(sheetName);
+        // 设置名称引用的公式
+        namedCell.setRefersToFormula(sheetName + "!$A$1:$A$" + (sheetData.length > 0 ? sheetData.length : 1));
+        //加载数据,将名称为hidden的sheet中的数据转换为List形式
+        DVConstraint constraint = DVConstraint.createFormulaListConstraint(sheetName);
+
+        // 设置第一列的3-65534行为下拉列表
+        // (3, 65534, 2, 2) ====> (起始行,结束行,起始列,结束列)
+        CellRangeAddressList regions = new CellRangeAddressList(firstRow, lastRow, firstCol, lastCol);
+        // 将设置下拉选的位置和数据的对应关系 绑定到一起
+        DataValidation dataValidation = new HSSFDataValidation(regions, constraint);
+
+        //将第二个sheet设置为隐藏
+        workbook.setSheetHidden(sheetNameIndex, true);
+        //将数据赋给下拉列表
+        workbook.getSheetAt(0).addValidationData(dataValidation);
     }
 
     /**

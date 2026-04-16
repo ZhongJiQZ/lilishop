@@ -1,5 +1,7 @@
 package cn.lili.controller.store;
 
+import cn.lili.common.context.ThreadContextHolder;
+import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.vo.PageVO;
 import cn.lili.common.vo.ResultMessage;
@@ -17,9 +19,12 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -135,4 +140,19 @@ public class StoreManagerController {
         return ResultUtil.success();
     }
 
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "导入店铺，店铺批量添加")
+    public ResultMessage<Object> importExcel(@RequestPart("files") MultipartFile files) throws Exception {
+        storeService.importExcel(files);
+        return ResultUtil.success(ResultCode.SUCCESS);
+    }
+
+
+    @Operation(summary = "下载导入模板", description = "下载导入模板")
+    @GetMapping("/downLoad")
+    public void download() {
+        HttpServletResponse response = ThreadContextHolder.getHttpResponse();
+
+        storeService.download(response);
+    }
 }

@@ -258,14 +258,14 @@ rocketmq:
     group: lili_group
     send-message-timeout: 30000
 
-xxl:
-  job:
-    admin:
-      addresses: http://127.0.0.1:9001/xxl-job-admin
-    executor:
-      appname: xxl-job-executor-lilishop
-      address:
-      ip:
-      port: 8891
-      logpath: ./xxl-job/executor
-      logretentiondays: 7
+#xxl:
+#  job:
+#    admin:
+#      addresses: http://127.0.0.1:9001/xxl-job-admin
+#    executor:
+#      appname: xxl-job-executor-lilishop
+#      address:
+#      ip:
+#      port: 8891
+#      logpath: ./xxl-job/executor
+#      logretentiondays: 7
