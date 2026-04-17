@@ -414,7 +414,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 OrderStatusEnum.UNDELIVERED.name(),
                 OrderStatusEnum.UNPAID.name(),
                 OrderStatusEnum.STAY_PICKED_UP.name(),
-                OrderStatusEnum.PAID.name(),
+//                OrderStatusEnum.PAID.name(),// 已付款禁止取消订单 原因：使用的三方支付只能由三方退款
                 OrderStatusEnum.TAKE.name())) {
 
             order.setOrderStatus(OrderStatusEnum.CANCELLED.name());
