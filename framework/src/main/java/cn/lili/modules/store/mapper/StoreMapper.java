@@ -57,7 +57,7 @@ public interface StoreMapper extends BaseMapper<Store> {
      * @param queryWrapper 查询条件
      * @return 店铺VO分页列表
      */
-    @Select("SELECT s.id, s.store_name, s.store_logo, s.store_desc, COUNT(o.id) AS order_count " +
+    @Select("SELECT s.id, s.store_name, s.store_logo, s.store_desc, (COUNT(o.id) + s.virtual_sales_num) AS order_count " +
             "FROM li_store s " +
             "LEFT JOIN li_order o ON s.id = o.store_id " +
             "AND o.order_status = 'COMPLETE' " + // 只统计已完成订单
@@ -65,6 +65,6 @@ public interface StoreMapper extends BaseMapper<Store> {
             "AND o.deliver_status = 'SIGN' " +
             "${ew.customSqlSegment} " +
             "GROUP BY s.id " +
-            "ORDER BY order_count DESC")
+            "ORDER BY order_count DESC, s.id ASC")
     IPage<StoreTradeRankingVO> getStoreTradeRankingList(Page<Object> page, @Param(Constants.WRAPPER) QueryWrapper<Store> queryWrapper);
 }

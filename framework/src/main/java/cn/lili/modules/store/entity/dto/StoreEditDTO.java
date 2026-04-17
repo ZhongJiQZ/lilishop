@@ -192,6 +192,9 @@ public class StoreEditDTO {
     @Schema(description = "代理人名称")
     private String agentName;
 
+    @Schema(description = "虚拟销量")
+    private Integer virtualSalesNum;
+
     public String getSalesConsigneeName() {
         return getDefaultValue(salesConsigneeName);
     }

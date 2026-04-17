@@ -18,10 +18,4 @@ public class StoreDetailVO extends StoreEditDTO {
     @Schema(description = "会员名称")
     private String memberName;
 
-    @Schema(description = "代理人ID")
-    private String agentId;
-
-    @Schema(description = "代理人名称")
-    private String agentName;
-
 }

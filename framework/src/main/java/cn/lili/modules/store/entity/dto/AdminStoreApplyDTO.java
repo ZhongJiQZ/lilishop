@@ -180,4 +180,7 @@ public class AdminStoreApplyDTO {
     @Schema(description = "代理人名称")
     private String agentName;
 
+    @Schema(description = "虚拟销量")
+    private Integer virtualSalesNum;
+
 }
