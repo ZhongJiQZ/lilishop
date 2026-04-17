@@ -171,7 +171,9 @@ public class WechatPlugin implements Payment {
             prepayRequest.setAppid(appid);
             prepayRequest.setMchid(setting.getMchId());
             prepayRequest.setDescription(cashierParam.getDetail());
-            prepayRequest.setNotifyUrl(notifyUrl(wechatPaymentSetting().getCallbackUrl(), PaymentMethodEnum.WECHAT));
+            String notifyUrl = notifyUrl(wechatPaymentSetting().getCallbackUrl(), PaymentMethodEnum.WECHAT);
+            prepayRequest.setNotifyUrl(notifyUrl);
+            log.info("微信MP支付回调地址: {}, orderType={}, sn={}", notifyUrl, payParam.getOrderType(), payParam.getSn());
             prepayRequest.setAttach(attach);
             prepayRequest.setTimeExpire(timeExpire);
             prepayRequest.setOutTradeNo(outOrderNo);

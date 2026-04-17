@@ -63,6 +63,8 @@ public class CashierController {
             @PathVariable String paymentMethod,
             @PathVariable String paymentClient,
             @Validated PayParam payParam) {
+        log.info("收银台官方支付入口命中, paymentMethod={}, paymentClient={}, orderType={}, sn={}",
+                paymentMethod, paymentClient, payParam.getOrderType(), payParam.getSn());
         PaymentMethodEnum paymentMethodEnum = PaymentMethodEnum.valueOf(paymentMethod);
         PaymentClientEnum paymentClientEnum = PaymentClientEnum.valueOf(paymentClient);
 
@@ -109,12 +111,15 @@ public class CashierController {
     @Operation(summary = "聚合微信小程序支付")
     @GetMapping("/miniPay/mp")
     public ResultMessage<Map<String, String>> miniProgramPay(@Validated PayParam payParam) {
+        log.info("收银台聚合小程序支付入口命中, orderType={}, sn={}, clientType={}",
+                payParam.getOrderType(), payParam.getSn(), payParam.getClientType());
         return ResultUtil.data(miniPaySupport.miniProgramPay(payParam));
     }
 
     @Operation(summary = "聚合微信小程序支付异步通知")
     @RequestMapping(value = "/miniPay/notify", method = {RequestMethod.GET, RequestMethod.POST})
     public String miniPayNotify(HttpServletRequest request) {
+        log.info("收银台聚合小程序支付回调入口命中, remoteAddr={}", request.getRemoteAddr());
         return miniPaySupport.notify(request);
     }
 }

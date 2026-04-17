@@ -73,6 +73,8 @@ public class MiniPaySupport {
     private String subWxMchid;
     @Value("${lili.payment.minipay.notifyPath:/buyer/payment/cashier/miniPay/notify}")
     private String notifyPath;
+    @Value("${lili.payment.minipay.notifyUrl:}")
+    private String miniPayNotifyUrl;
 
     public Map<String, String> miniProgramPay(PayParam payParam) {
         if (StringUtils.isEmpty(apiKey) || StringUtils.isEmpty(signKey)) {
@@ -108,6 +110,7 @@ public class MiniPaySupport {
         requestParams.put("remarks", cashierParam.getDetail());
         requestParams.put("mch_orderid", mchOrderId);
         requestParams.put("notify_url", buildNotifyUrl(wechatPaymentSetting.getCallbackUrl()));
+        log.info("聚合支付回调地址: {}", requestParams.get("notify_url"));
         requestParams.put("time_expire", String.valueOf(expireAtSecond()));
         requestParams.put("sub_wx_mchid", subWxMchid);
         requestParams.put("attach", JSONUtil.toJsonStr(payParam));
@@ -156,9 +159,11 @@ public class MiniPaySupport {
             log.error("聚合支付异步通知验签失败: {}", notifyMap);
             return "success";
         }
-        if (!SUCCESS_STATUS.equals(notifyMap.get("status")) || !PAY_SUCCESS.equals(notifyMap.get("paystatus"))) {
-            log.info("聚合支付异步通知非成功状态, status={}, paystatus={}",
-                    notifyMap.get("status"), notifyMap.get("paystatus"));
+        String status = normalize(notifyMap.get("status"));
+        String payStatus = normalize(notifyMap.get("paystatus"));
+        // 部分通道异步回调不返回 status，paystatus=1 即可判定支付成功
+        if ((StringUtils.isNotEmpty(status) && !SUCCESS_STATUS.equals(status)) || !PAY_SUCCESS.equals(payStatus)) {
+            log.info("聚合支付异步通知非成功状态, status={}, paystatus={}", status, payStatus);
             return "success";
         }
 
@@ -247,16 +252,31 @@ public class MiniPaySupport {
     }
 
     private String buildNotifyUrl(String callbackUrl) {
-        if (StringUtils.isEmpty(callbackUrl)) {
+        String source = StringUtils.isNotEmpty(miniPayNotifyUrl) ? miniPayNotifyUrl : callbackUrl;
+        if (StringUtils.isEmpty(source)) {
             throw new ServiceException(ResultCode.WECHAT_PAYMENT_NOT_SETTING);
         }
-        if (callbackUrl.endsWith("/") && notifyPath.startsWith("/")) {
-            return callbackUrl.substring(0, callbackUrl.length() - 1) + notifyPath;
+        String notifyUrl = normalizeNotifyUrl(source.trim());
+        if (!source.equals(notifyUrl)) {
+            log.warn("聚合支付回调地址已自动规范化, source={}, normalized={}", source, notifyUrl);
         }
-        if (!callbackUrl.endsWith("/") && !notifyPath.startsWith("/")) {
-            return callbackUrl + "/" + notifyPath;
+        return notifyUrl;
+    }
+
+    private String normalizeNotifyUrl(String source) {
+        String path = notifyPath.startsWith("/") ? notifyPath : "/" + notifyPath;
+        int first = source.indexOf(path);
+        if (first >= 0) {
+            // source 中已包含回调路径时，裁剪为“域名 + 单份路径”
+            return source.substring(0, first) + path;
         }
-        return callbackUrl + notifyPath;
+        if (source.endsWith("/") && path.startsWith("/")) {
+            return source.substring(0, source.length() - 1) + path;
+        }
+        if (!source.endsWith("/") && !path.startsWith("/")) {
+            return source + "/" + path;
+        }
+        return source + path;
     }
 
     private WechatPaymentSetting wechatPaymentSetting() {
@@ -274,6 +294,13 @@ public class MiniPaySupport {
             return value;
         }
         return defaultValue;
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.trim();
     }
 
     private Map<String, Object> maskSensitive(Map<String, ?> source) {
