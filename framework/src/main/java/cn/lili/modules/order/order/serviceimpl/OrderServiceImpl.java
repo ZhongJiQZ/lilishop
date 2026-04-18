@@ -67,6 +67,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import jakarta.servlet.ServletOutputStream;
@@ -1099,6 +1100,28 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setSellerRemark(sellerRemark);
         this.updateById(order);
         return order;
+    }
+
+    /**
+     * 更新微信发货上报状态
+     */
+    @Override
+    public boolean updateWxUploadShipping(String orderSn, Integer status) {
+        LambdaUpdateWrapper<Order> wrapper = Wrappers.lambdaUpdate();
+        wrapper.eq(Order::getSn, orderSn);
+        wrapper.set(Order::getWxUploadShipping, status);
+        return this.update(wrapper);
+    }
+
+    /**
+     * 更新微信确认收货上报状态
+     */
+    @Override
+    public boolean updateWxConfirmReport(String orderSn, Integer status) {
+        LambdaUpdateWrapper<Order> wrapper = Wrappers.lambdaUpdate();
+        wrapper.eq(Order::getSn, orderSn);
+        wrapper.set(Order::getWxConfirmReceive, status);
+        return this.update(wrapper);
     }
 
     /**

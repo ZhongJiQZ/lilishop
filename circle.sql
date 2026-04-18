@@ -303,3 +303,9 @@ ALTER TABLE li_goods ADD COLUMN copy_parent_id VARCHAR(64) NULL COMMENT '复制�
 
 ALTER TABLE li_store
     ADD COLUMN virtual_sales_num INT(11) DEFAULT 0 COMMENT '店铺虚拟销量';
+
+-- 微信发货上报状态 0=未上报 1=已上报 2=上报失败
+ALTER TABLE li_order ADD COLUMN wx_upload_shipping TINYINT(1) NOT NULL DEFAULT 0 COMMENT '微信发货是否上报成功 0=未上报 1=已上报 2=上报失败';
+
+-- 微信确认收货上报状态 0=未上报 1=已上报 2=上报失败
+ALTER TABLE li_order ADD COLUMN wx_confirm_receive TINYINT(1) NOT NULL DEFAULT 0 COMMENT '微信确认收货是否上报成功 0=未上报 1=已上报 2=上报失败';

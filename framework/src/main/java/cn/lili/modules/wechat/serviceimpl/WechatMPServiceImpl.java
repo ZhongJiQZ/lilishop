@@ -74,6 +74,40 @@ public class WechatMPServiceImpl implements WechatMPService {
     String confirmReceiveUrl = "https://api.weixin.qq.com/wxa/sec/order/notify_confirm_receive?access_token=";
 
     /**
+     * 查询微信侧订单发货状态
+     */
+    String getOrderUrl = "https://api.weixin.qq.com/wxa/sec/order/get_order?access_token=";
+
+    /**
+     * 查询订单发货状态
+     * 只能通过 transaction_id 或 merchant_id + merchant_trade_no 查询
+     */
+    public JSONObject getOrderShippingStatus(String orderSn) {
+        Order order = orderService.getBySn(orderSn);
+        //是否是微信小程序订单 && 微信支付
+        if (!order.getClientType().equals(ClientTypeEnum.WECHAT_MP.name())
+                || !order.getPaymentMethod().equals(PaymentMethodEnum.WECHAT.name())) {
+            return null;
+        }
+
+        try {
+            Setting setting = settingService.get(SettingEnum.WECHAT_PAYMENT.name());
+            WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(setting.getSettingValue(), WechatPaymentSetting.class);
+
+            Map<String, Object> param = new HashMap<>();
+//            param.put("merchant_id", wechatPaymentSetting.getMchId());
+            param.put("merchant_trade_no", order.getSn());
+
+            // 调用微信接口
+            return this.doPostWithJson(getOrderUrl, param);
+
+        } catch (Exception e) {
+            log.error("调用微信get_order查询订单状态失败", e);
+            throw new ServiceException("查询微信订单发货状态失败");
+        }
+    }
+
+    /**
      * 发货信息录入
      *
      * @param orderSn 订单号

@@ -14,9 +14,9 @@ import cn.lili.modules.system.entity.vo.Traces;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
@@ -352,4 +352,14 @@ public interface OrderService extends IService<Order> {
      * @return 订单
      */
     Order updateSellerRemark(String orderSn, String sellerRemark);
+
+    /**
+     * 更新微信发货上报状态
+     */
+    boolean updateWxUploadShipping(String orderSn, Integer status);
+
+    /**
+     * 更新微信确认收货上报状态
+     */
+    boolean updateWxConfirmReport(String orderSn, Integer status);
 }

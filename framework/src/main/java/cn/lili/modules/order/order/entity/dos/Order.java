@@ -221,6 +221,12 @@ public class Order extends BaseEntity {
     @Schema(description = "自提点地址经纬度")
     private String storeAddressCenter;
 
+    @Schema(description = "微信发货是否上报成功 0=未上报 1=已上报 2=上报失败")
+    private Integer wxUploadShipping;
+
+    @Schema(description = "微信确认收货是否上报成功 0=未上报 1=已上报 2=上报失败")
+    private Integer wxConfirmReceive;
+
     /**
      * 构建订单
      *
