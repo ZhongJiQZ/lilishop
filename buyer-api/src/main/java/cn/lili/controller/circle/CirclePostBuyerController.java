@@ -66,4 +66,11 @@ public class CirclePostBuyerController {
         return ResultUtil.success(ResultCode.SUCCESS);
     }
 
+    @Operation(summary = "删除评论")
+    @Parameter(name = "ids", description = "评论ID", required = true)
+    @DeleteMapping("/comment/delete/{ids}")
+    public ResultMessage<Object> deleteCirclePostComment(@PathVariable List<String> ids) {
+        commentService.deleteMyComments(ids);
+        return ResultUtil.success(ResultCode.SUCCESS);
+    }
 }

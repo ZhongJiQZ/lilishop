@@ -112,7 +112,7 @@ public class MiniPaySupport {
         requestParams.put("notify_url", buildNotifyUrl(wechatPaymentSetting.getCallbackUrl()));
         log.info("聚合支付回调地址: {}", requestParams.get("notify_url"));
         requestParams.put("time_expire", String.valueOf(expireAtSecond()));
-        requestParams.put("sub_wx_mchid", subWxMchid);
+//        requestParams.put("sub_wx_mchid", subWxMchid);
         requestParams.put("attach", JSONUtil.toJsonStr(payParam));
         log.info("聚合支付签名前参数: {}", maskSensitive(requestParams));
         requestParams.put("sign", createSign(requestParams));

@@ -36,7 +36,7 @@ public interface CirclePostCommentMapper extends BaseMapper<CirclePostComment> {
      * @param queryWrapper 查询条件
      * @return 圈子帖子VO分页
      */
-    @Select("SELECT nick_name,content FROM li_circle_post_comment c left join li_member m on m.id=c.user_id ${ew.customSqlSegment}")
+    @Select("SELECT c.id, c.user_id, nick_name,content FROM li_circle_post_comment c left join li_member m on m.id=c.user_id ${ew.customSqlSegment}")
     List<CirclePostCommentVO> getCirclePostCommentByList(@Param(Constants.WRAPPER) Wrapper<CirclePostCommentVO> queryWrapper);
 
     /**

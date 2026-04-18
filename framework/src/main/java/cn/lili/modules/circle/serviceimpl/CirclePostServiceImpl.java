@@ -61,6 +61,10 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
 
     @Override
     public IPage<CirclePostVO> queryByParams(CirclePostSearchParams circlePostSearchParams) {
+        // 1. 获取当前登录用户
+        AuthUser currentUser = UserContext.getCurrentUser();
+        String currentUserId = currentUser != null ? currentUser.getId() : null;
+
         circlePostSearchParams.setSort("c.create_time");
         circlePostSearchParams.setOrder("desc");
         QueryWrapper queryWrapper = circlePostSearchParams.queryWrapper();
@@ -73,6 +77,9 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
             List<CirclePostCommentVO> circlePostCommentByList = circlePostCommentService.getCirclePostCommentByList(params);
             circlePostCommentByList.forEach(circlePostComment -> {
                 circlePostComment.setContent(SensitiveWordsFilter.filter(circlePostComment.getContent()));
+                // 设置是否可删除：当前用户不为空 并且 评论的userId == 当前用户id
+                boolean canDelete = currentUserId != null && currentUserId.equals(circlePostComment.getUserId());
+                circlePostComment.setCanDelete(canDelete);
             });
             circlePost.setCommentList(circlePostCommentByList);
             if (StringUtils.isNotEmpty(circlePost.getStoreId())) {

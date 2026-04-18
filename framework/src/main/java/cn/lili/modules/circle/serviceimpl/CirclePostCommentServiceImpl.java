@@ -15,6 +15,11 @@ import cn.lili.modules.circle.entity.vos.CirclePostCommentVO;
 import cn.lili.modules.circle.mapper.CirclePostCommentMapper;
 import cn.lili.modules.circle.mapper.CirclePostMapper;
 import cn.lili.modules.circle.service.CirclePostCommentService;
+import cn.lili.modules.member.entity.dos.Member;
+import cn.lili.modules.member.mapper.MemberMapper;
+import cn.lili.modules.order.order.entity.dos.Order;
+import cn.lili.modules.order.order.entity.enums.PayStatusEnum;
+import cn.lili.modules.order.order.mapper.OrderMapper;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
 import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -40,6 +45,10 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
      */
     @Autowired
     private CirclePostMapper circlePostMapper;
+    @Autowired
+    private OrderMapper orderMapper;
+    @Autowired
+    private MemberMapper memberMapper;
 
     @Override
     public List<CirclePostCommentVO> getCirclePostCommentByList(CirclePostCommentSearchParams searchParams) {
@@ -58,6 +67,24 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
         if(circlePost == null){
             throw new ServiceException(ResultCode.CIRCLE_POST_NOT_EXIST);
         }
+
+        // 1. 判断用户是否购买过该商品
+        QueryWrapper<Order> orderWrapper = new QueryWrapper<>();
+        orderWrapper.eq("member_id", tokenUser.getId())// 是当前用户
+                .eq("store_id", circlePost.getStoreId())// 在这家店铺
+                .in("pay_status", PayStatusEnum.PAID.name());// 已支付
+        long buyCount = orderMapper.selectCount(orderWrapper);
+        boolean hasBuy = buyCount > 0;
+
+        // 2. 判断是否是会员
+        Member member = memberMapper.selectById(tokenUser.getId());
+        boolean isVip = member.getIsVip() == 1;
+
+        // 3. 未购买 + 不是会员 → 禁止评论
+        if (!hasBuy && !isVip) {
+            throw new ServiceException(ResultCode.CIRCLE_POST_COMMENT_PERMISSION_DENIED);
+        }
+
         CirclePostComment circlePostComment = new CirclePostComment(commentOperationDTO);
 //        CirclePostComment circlePostComment = CirclePostComment.fromDTO(commentOperationDTO);
         circlePostComment.setUserId(tokenUser.getId());
@@ -138,5 +165,31 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
             throw new ServiceException(ResultCode.CIRCLE_POST_COMMENT_NOT_EXIST);
         }
         return invalidCount;
+    }
+
+    @Override
+    public void deleteMyComments(List<String> ids) {
+        AuthUser tokenUser = UserContext.getCurrentUser();
+        if (tokenUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+        String currentMemberId = tokenUser.getId();
+
+        // 统计：不属于当前用户的评论数量
+        long notSelfCount = this.lambdaQuery()
+                .in(CirclePostComment::getId, ids)
+                .ne(CirclePostComment::getUserId, currentMemberId)
+                .count();
+
+        // 存在别人的评论 → 直接抛异常
+        if (notSelfCount > 0) {
+            throw new ServiceException(ResultCode.CIRCLE_COMMENT_NOT_SELF);
+        }
+
+        // 全部都是自己的，才执行删除
+        this.lambdaUpdate()
+                .eq(CirclePostComment::getUserId, tokenUser.getId())
+                .in(CirclePostComment::getId, ids)
+                .remove();
     }
 }

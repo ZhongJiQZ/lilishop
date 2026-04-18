@@ -57,4 +57,10 @@ public interface CirclePostCommentService extends IService<CirclePostComment> {
     IPage<CirclePostComment> queryByParams(CirclePostCommentSearchParams commentSearchParams);
 
     long checkStorePermission(List<String> commentIds);
+
+    /**
+     * 删除评论
+     * @param ids
+     */
+    void deleteMyComments(List<String> ids);
 }

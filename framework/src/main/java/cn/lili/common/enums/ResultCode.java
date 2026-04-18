@@ -535,6 +535,8 @@ public enum ResultCode {
     CIRCLE_COMMENT_NOT_EXIST(80515, "评论不存在或已删除"),
     CIRCLE_COMMENT_PERMISSION_DENIED(80516, "无权操作该评论"),
     CIRCLE_COMMENT_UPDATE_ERROR(80517, "编辑评论失败，无权限或状态异常"),
+    CIRCLE_POST_COMMENT_PERMISSION_DENIED(80518, "未购买商品且非会员，无法评论"),
+    CIRCLE_COMMENT_NOT_SELF(80519, "该评论不属于您，无权删除"),
 
     /**
      * 邀请码
