@@ -524,29 +524,47 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             return;
         }
 
-        // 2. 未开启则结束
+        // 2. 功能未开启，直接结束
         if (!Boolean.TRUE.equals(setting.getIsOpen())) {
             log.info("邀请佣金已关闭，订单{}不计算佣金", order.getSn());
             return;
         }
 
-        // 3. 会员不存在则结束
+        BigDecimal commissionRate = setting.getCommissionRate();
+        // 3. 佣金比例为空 或 小于0（负数），直接不处理
+        if (commissionRate == null || commissionRate.compareTo(BigDecimal.ZERO) < 0) {
+            log.info("邀请佣金比例异常【小于0】，订单{}不计算佣金，比例：{}", order.getSn(), commissionRate);
+            return;
+        }
+
+        // 4. 佣金比例 = 0，不生成佣金记录（核心需求）
+        if (commissionRate.compareTo(BigDecimal.ZERO) == 0) {
+            log.info("邀请佣金比例为0，订单{}不生成佣金记录", order.getSn());
+            return;
+        }
+
+        // 5. 下单会员不存在
         Member member = memberMapper.selectById(order.getMemberId());
         if (member == null) {
             return;
         }
 
-        // 4. 无邀请人则结束
+        // 6. 会员无上级邀请人
         if (CharSequenceUtil.isEmpty(member.getInviterId())) {
             return;
         }
 
-        // 5. 计算佣金
+        // 7. 计算佣金
         BigDecimal orderPrice = BigDecimal.valueOf(order.getFlowPrice());
-        BigDecimal commissionRate = setting.getCommissionRate();
         BigDecimal commission = orderPrice.multiply(commissionRate);
 
-        // 6. 保存佣金记录
+        // 兜底：最终佣金金额为0 也不入库
+        if (commission.compareTo(BigDecimal.ZERO) <= 0) {
+            log.info("订单{}佣金计算结果为0，不保存佣金记录", order.getSn());
+            return;
+        }
+
+        // 8. 保存佣金记录
         MemberCommission commissionDO = new MemberCommission();
         commissionDO.setOrderSn(order.getSn());
         commissionDO.setOrderPrice(orderPrice);
