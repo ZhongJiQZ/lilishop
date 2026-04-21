@@ -260,8 +260,10 @@ public class WebSocketServer {
                         new MessageVO(MessageResultType.UN_READ, imMessageService.getUnreadCount(accessToken)));
                 break;
             case READ:
-                if (StrUtil.isNotEmpty(messageOperation.getContext())) {
+                if (StrUtil.isNotEmpty(messageOperation.getTalkId())) {
                     imMessageService.read(messageOperation.getTalkId(), accessToken);
+                } else {
+                    log.warn("READ操作缺少talkId，忽略本次已读请求");
                 }
                 break;
             case UNREAD:
