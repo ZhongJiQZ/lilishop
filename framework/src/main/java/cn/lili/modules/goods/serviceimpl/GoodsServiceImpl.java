@@ -410,18 +410,22 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (goodsIds == null || goodsIds.isEmpty()) {
             return true;
         }
+        List<String> finalGoodsIds = goodsIds;
+        if (GoodsStatusEnum.DOWN.equals(goodsStatusEnum)) {
+            finalGoodsIds = this.expandGoodsIdsForDownByStoreAuthority(goodsIds);
+        }
 
         LambdaUpdateWrapper<Goods> updateWrapper = this.getUpdateWrapperByStoreAuthority();
         updateWrapper.set(Goods::getMarketEnable, goodsStatusEnum.name());
         updateWrapper.set(Goods::getUnderMessage, underReason);
-        updateWrapper.in(Goods::getId, goodsIds);
+        updateWrapper.in(Goods::getId, finalGoodsIds);
         result = this.update(updateWrapper);
 
         //修改规格商品
         LambdaQueryWrapper<Goods> queryWrapper = this.getQueryWrapperByStoreAuthority();
-        queryWrapper.in(Goods::getId, goodsIds);
+        queryWrapper.in(Goods::getId, finalGoodsIds);
         List<Goods> goodsList = this.list(queryWrapper);
-        this.updateGoodsStatus(goodsIds, goodsStatusEnum, goodsList);
+        this.updateGoodsStatus(finalGoodsIds, goodsStatusEnum, goodsList);
         return result;
     }
 
@@ -463,18 +467,22 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
 
         //检测管理员权限
         this.checkManagerAuthority();
+        List<String> finalGoodsIds = goodsIds;
+        if (GoodsStatusEnum.DOWN.equals(goodsStatusEnum)) {
+            finalGoodsIds = this.expandGoodsIdsForDownByManager(goodsIds);
+        }
 
         LambdaUpdateWrapper<Goods> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.set(Goods::getMarketEnable, goodsStatusEnum.name());
         updateWrapper.set(Goods::getUnderMessage, underReason);
-        updateWrapper.in(Goods::getId, goodsIds);
+        updateWrapper.in(Goods::getId, finalGoodsIds);
         result = this.update(updateWrapper);
 
         //修改规格商品
         LambdaQueryWrapper<Goods> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.in(Goods::getId, goodsIds);
+        queryWrapper.in(Goods::getId, finalGoodsIds);
         List<Goods> goodsList = this.list(queryWrapper);
-        this.updateGoodsStatus(goodsIds, goodsStatusEnum, goodsList);
+        this.updateGoodsStatus(finalGoodsIds, goodsStatusEnum, goodsList);
         return result;
     }
 
@@ -964,20 +972,97 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (CollUtil.isEmpty(goodsIds)) {
             return true;
         }
+        List<String> finalGoodsIds = goodsIds;
+        if (GoodsStatusEnum.DOWN.equals(goodsStatusEnum)) {
+            finalGoodsIds = this.expandGoodsIdsForDownByStore(goodsIds, storeId);
+        }
         LambdaUpdateWrapper<Goods> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(Goods::getStoreId, storeId);
-        updateWrapper.in(Goods::getId, goodsIds);
+        updateWrapper.in(Goods::getId, finalGoodsIds);
         updateWrapper.set(Goods::getMarketEnable, goodsStatusEnum.name());
         updateWrapper.set(Goods::getUnderMessage, operateReason);
         boolean result = this.update(updateWrapper);
 
         LambdaQueryWrapper<Goods> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Goods::getStoreId, storeId);
-        queryWrapper.in(Goods::getId, goodsIds);
+        queryWrapper.in(Goods::getId, finalGoodsIds);
         List<Goods> goodsList = this.list(queryWrapper);
         List<String> scopedGoodsIds = goodsList.stream().map(Goods::getId).collect(Collectors.toList());
         this.updateGoodsStatus(scopedGoodsIds, goodsStatusEnum, goodsList);
         return result;
+    }
+
+    private List<String> expandGoodsIdsForDownByStoreAuthority(List<String> goodsIds) {
+        LambdaQueryWrapper<Goods> selectedWrapper = this.getQueryWrapperByStoreAuthority();
+        selectedWrapper.in(Goods::getId, goodsIds);
+        List<Goods> selectedGoods = this.list(selectedWrapper);
+        if (CollUtil.isEmpty(selectedGoods)) {
+            return goodsIds;
+        }
+        Set<String> anchorIds = this.extractCopyAnchorIds(selectedGoods);
+        if (CollUtil.isEmpty(anchorIds)) {
+            return goodsIds;
+        }
+        LambdaQueryWrapper<Goods> relatedWrapper = this.getQueryWrapperByStoreAuthority();
+        relatedWrapper.and(w -> w.in(Goods::getId, anchorIds).or().in(Goods::getCopyParentId, anchorIds));
+        List<Goods> relatedGoods = this.list(relatedWrapper);
+        return this.mergeGoodsIds(goodsIds, relatedGoods);
+    }
+
+    private List<String> expandGoodsIdsForDownByManager(List<String> goodsIds) {
+        LambdaQueryWrapper<Goods> selectedWrapper = new LambdaQueryWrapper<>();
+        selectedWrapper.in(Goods::getId, goodsIds);
+        List<Goods> selectedGoods = this.list(selectedWrapper);
+        if (CollUtil.isEmpty(selectedGoods)) {
+            return goodsIds;
+        }
+        Set<String> anchorIds = this.extractCopyAnchorIds(selectedGoods);
+        if (CollUtil.isEmpty(anchorIds)) {
+            return goodsIds;
+        }
+        LambdaQueryWrapper<Goods> relatedWrapper = new LambdaQueryWrapper<>();
+        relatedWrapper.and(w -> w.in(Goods::getId, anchorIds).or().in(Goods::getCopyParentId, anchorIds));
+        List<Goods> relatedGoods = this.list(relatedWrapper);
+        return this.mergeGoodsIds(goodsIds, relatedGoods);
+    }
+
+    private List<String> expandGoodsIdsForDownByStore(List<String> goodsIds, String storeId) {
+        LambdaQueryWrapper<Goods> selectedWrapper = new LambdaQueryWrapper<>();
+        selectedWrapper.eq(Goods::getStoreId, storeId);
+        selectedWrapper.in(Goods::getId, goodsIds);
+        List<Goods> selectedGoods = this.list(selectedWrapper);
+        if (CollUtil.isEmpty(selectedGoods)) {
+            return goodsIds;
+        }
+        Set<String> anchorIds = this.extractCopyAnchorIds(selectedGoods);
+        if (CollUtil.isEmpty(anchorIds)) {
+            return goodsIds;
+        }
+        LambdaQueryWrapper<Goods> relatedWrapper = new LambdaQueryWrapper<>();
+        relatedWrapper.eq(Goods::getStoreId, storeId);
+        relatedWrapper.and(w -> w.in(Goods::getId, anchorIds).or().in(Goods::getCopyParentId, anchorIds));
+        List<Goods> relatedGoods = this.list(relatedWrapper);
+        return this.mergeGoodsIds(goodsIds, relatedGoods);
+    }
+
+    private Set<String> extractCopyAnchorIds(List<Goods> goodsList) {
+        Set<String> anchorIds = new HashSet<>();
+        for (Goods goods : goodsList) {
+            if (CharSequenceUtil.isNotBlank(goods.getCopyParentId())) {
+                anchorIds.add(goods.getCopyParentId());
+            } else if (CharSequenceUtil.isNotBlank(goods.getId())) {
+                anchorIds.add(goods.getId());
+            }
+        }
+        return anchorIds;
+    }
+
+    private List<String> mergeGoodsIds(List<String> originalGoodsIds, List<Goods> relatedGoods) {
+        Set<String> finalIds = new HashSet<>(originalGoodsIds);
+        if (CollUtil.isNotEmpty(relatedGoods)) {
+            relatedGoods.stream().map(Goods::getId).forEach(finalIds::add);
+        }
+        return new ArrayList<>(finalIds);
     }
 
     /**
