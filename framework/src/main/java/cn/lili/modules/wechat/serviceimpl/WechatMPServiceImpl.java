@@ -83,10 +83,12 @@ public class WechatMPServiceImpl implements WechatMPService {
      * 只能通过 transaction_id 或 merchant_id + merchant_trade_no 查询
      */
     public JSONObject getOrderShippingStatus(String orderSn) {
+        log.info("【微信小程序】开始查询订单发货状态，订单号：{}", orderSn);
         Order order = orderService.getBySn(orderSn);
         //是否是微信小程序订单 && 微信支付
         if (!order.getClientType().equals(ClientTypeEnum.WECHAT_MP.name())
                 || !order.getPaymentMethod().equals(PaymentMethodEnum.WECHAT.name())) {
+            log.info("【微信小程序】非微信小程序/非微信支付，跳过查询订单发货状态，订单：{}", orderSn);
             return null;
         }
 
@@ -95,14 +97,17 @@ public class WechatMPServiceImpl implements WechatMPService {
             WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(setting.getSettingValue(), WechatPaymentSetting.class);
 
             Map<String, Object> param = new HashMap<>();
-//            param.put("merchant_id", wechatPaymentSetting.getMchId());
-            param.put("merchant_trade_no", order.getSn());
+            param.put("merchant_id", wechatPaymentSetting.getMchId());
+            param.put("transaction_id", order.getReceivableNo());
+            log.info("【微信小程序】getOrder 请求参数：{}", JSON.toJSONString(param));
 
             // 调用微信接口
-            return this.doPostWithJson(getOrderUrl, param);
+            JSONObject result = this.doPostWithJson(getOrderUrl, param);
+            log.info("【微信小程序】getOrder 返回结果：{}", JSON.toJSONString(result));
+            return result;
 
         } catch (Exception e) {
-            log.error("调用微信get_order查询订单状态失败", e);
+            log.error("【微信小程序】调用微信get_order查询订单状态失败，订单：{}", orderSn, e);
             throw new ServiceException("查询微信订单发货状态失败");
         }
     }
@@ -114,77 +119,91 @@ public class WechatMPServiceImpl implements WechatMPService {
      */
     @Override
     public void uploadShippingInfo(String orderSn) {
-
+        log.info("【微信小程序】开始上传发货信息，订单号：{}", orderSn);
         Order order = orderService.getBySn(orderSn);
         //是否是微信小程序订单 && 微信支付
         if (!order.getClientType().equals(ClientTypeEnum.WECHAT_MP.name())
                 || !order.getPaymentMethod().equals(PaymentMethodEnum.WECHAT.name())) {
+            log.info("【微信小程序】非微信小程序/非微信支付，跳过上传发货信息：{}", orderSn);
             return;
         }
         //是否开通发货信息管理
-        if (!isTradeManaged()) {
+        boolean isOpen = isTradeManaged();
+        log.info("【微信小程序】是否开通发货信息管理服务：{}", isOpen);
+        if (!isOpen) {
+            log.info("【微信小程序】未开通发货信息管理服务，跳过：{}", orderSn);
             return;
         }
-        Setting systemSetting = settingService.get(SettingEnum.WECHAT_PAYMENT.name());
-        WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(systemSetting.getSettingValue(), WechatPaymentSetting.class);
-        Map<String, Object> map = new HashMap<>(2);
 
-        //发货信息录入
-        //订单，需要上传物流信息的订单
-        map.put("order_key", new OrderKey(order,wechatPaymentSetting.getMchId()));
+        try {
+            Setting systemSetting = settingService.get(SettingEnum.WECHAT_PAYMENT.name());
+            WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(systemSetting.getSettingValue(), WechatPaymentSetting.class);
+            Map<String, Object> map = new HashMap<>(2);
 
+            //发货信息录入
+            //订单，需要上传物流信息的订单
+            map.put("order_key", new OrderKey(order, wechatPaymentSetting.getMchId()));
+            log.info("【微信小程序】order_key：{}", JSON.toJSONString(map.get("order_key")));
 
-        if (order.getOrderStatus().equals(OrderStatusEnum.TAKE.name())) {
+            if (order.getOrderStatus().equals(OrderStatusEnum.TAKE.name())) {
+                //物流模式，发货方式枚举值：1、实体物流配送采用快递公司进行实体物流配送形式 2、同城配送 3、虚拟商品，虚拟商品，例如话费充值，点卡等，无实体配送形式 4、用户自提
+                map.put("logistics_type", 3);
+                //发货模式，发货模式枚举值：1、UNIFIED_DELIVERY（统一发货）2、SPLIT_DELIVERY（分拆发货） 示例值: UNIFIED_DELIVERY
+                map.put("delivery_mode", 1);
+                log.info("【微信小程序】虚拟商品发货，logistics_type=3");
 
-            //物流模式，发货方式枚举值：1、实体物流配送采用快递公司进行实体物流配送形式 2、同城配送 3、虚拟商品，虚拟商品，例如话费充值，点卡等，无实体配送形式 4、用户自提
-            map.put("logistics_type", 3);
-            //发货模式，发货模式枚举值：1、UNIFIED_DELIVERY（统一发货）2、SPLIT_DELIVERY（分拆发货） 示例值: UNIFIED_DELIVERY
-            map.put("delivery_mode", 1);
+            } else if (order.getOrderStatus().equals(OrderStatusEnum.DELIVERED.name())) {
+                //物流模式，发货方式枚举值：1、实体物流配送采用快递公司进行实体物流配送形式 2、同城配送 3、虚拟商品，虚拟商品，例如话费充值，点卡等，无实体配送形式 4、用户自提
+                map.put("logistics_type", 1);
+                //发货模式，发货模式枚举值：1、UNIFIED_DELIVERY（统一发货）2、SPLIT_DELIVERY（分拆发货） 示例值: UNIFIED_DELIVERY
+                map.put("delivery_mode", 1);
+                log.info("【微信小程序】实物发货，logistics_type=1");
 
+                //物流信息列表，发货物流单列表，支持统一发货（单个物流单）和分拆发货（多个物流单）两种模式，多重性: [1, 10]
+                List<Shipping> shippingList = new ArrayList<>();
+                Shipping shipping = new Shipping();
+                shipping.setTracking_no(order.getLogisticsNo());
+                shipping.setExpress_company(getDeliveryList(order));
+                //商品信息，例如：微信红包抱枕*1个，限120个字以内
+                List<OrderItem> orderItemList = orderItemService.getByOrderSn(order.getSn());
+                shipping.setItem_desc(orderItemList.get(0).getGoodsName());
+                //联系方式，当发货的物流公司为顺丰时，联系方式为必填，收件人或寄件人联系方式二选一
+                Contact contact = new Contact();
+                contact.setReceiver_contact(order.getConsigneeMobile());
+                shipping.setContact(contact);
+                shippingList.add(shipping);
+                map.put("shipping_list", shippingList);
+                log.info("【微信小程序】物流信息：{}", JSON.toJSONString(shippingList));
 
-        } else if (order.getOrderStatus().equals(OrderStatusEnum.DELIVERED.name())) {
+            } else if (order.getOrderStatus().equals(OrderStatusEnum.STAY_PICKED_UP.name())) {
+                //物流模式，发货方式枚举值：1、实体物流配送采用快递公司进行实体物流配送形式 2、同城配送 3、虚拟商品，虚拟商品，例如话费充值，点卡等，无实体配送形式 4、用户自提
+                map.put("logistics_type", 4);
+                //发货模式，发货模式枚举值：1、UNIFIED_DELIVERY（统一发货）2、SPLIT_DELIVERY（分拆发货） 示例值: UNIFIED_DELIVERY
+                map.put("delivery_mode", 1);
+                log.info("【微信小程序】用户自提，logistics_type=4");
+            }
 
-            //物流模式，发货方式枚举值：1、实体物流配送采用快递公司进行实体物流配送形式 2、同城配送 3、虚拟商品，虚拟商品，例如话费充值，点卡等，无实体配送形式 4、用户自提
-            map.put("logistics_type", 1);
-            //发货模式，发货模式枚举值：1、UNIFIED_DELIVERY（统一发货）2、SPLIT_DELIVERY（分拆发货） 示例值: UNIFIED_DELIVERY
-            map.put("delivery_mode", 1);
+            //上传时间，用于标识请求的先后顺序 示例值: `2022-12-15T13:29:35.120+08:00`
+            map.put("upload_time", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.now()));
+            log.info("【微信小程序】上传时间：{}", map.get("upload_time"));
 
-            //物流信息列表，发货物流单列表，支持统一发货（单个物流单）和分拆发货（多个物流单）两种模式，多重性: [1, 10]
-            List<Shipping> shippingList = new ArrayList<>();
-            Shipping shipping = new Shipping();
-            shipping.setTracking_no(order.getLogisticsNo());
-            shipping.setExpress_company(getDeliveryList(order));
-            //商品信息，例如：微信红包抱枕*1个，限120个字以内
-            List<OrderItem> orderItemList = orderItemService.getByOrderSn(order.getSn());
-            shipping.setItem_desc(orderItemList.get(0).getGoodsName());
-            //联系方式，当发货的物流公司为顺丰时，联系方式为必填，收件人或寄件人联系方式二选一
-            Contact contact = new Contact();
-            contact.setReceiver_contact(order.getConsigneeMobile());
-            shipping.setContact(contact);
-            shippingList.add(shipping);
-            map.put("shipping_list", shippingList);
+            //支付者，支付者信息
+            Connect connect = connectService.queryConnect(ConnectQueryDTO.builder().userId(order.getMemberId()).unionType(SourceEnum.WECHAT_MP_OPEN_ID.name()).build());
+            if (connect == null) {
+                log.error("【微信小程序】未获取到用户openid，用户ID：{}", order.getMemberId());
+                return;
+            }
+            map.put("payer", new Payer(connect.getUnionId()));
+            log.info("【微信小程序】用户openid：{}", connect.getUnionId());
 
+            log.info("【微信小程序】最终上传参数：{}", JSON.toJSONString(map));
+            this.doPostWithJson(url, map);
+            log.info("【微信小程序】上传发货信息成功：{}", orderSn);
 
-        } else if (order.getOrderStatus().equals(OrderStatusEnum.STAY_PICKED_UP.name())) {
-
-            //物流模式，发货方式枚举值：1、实体物流配送采用快递公司进行实体物流配送形式 2、同城配送 3、虚拟商品，虚拟商品，例如话费充值，点卡等，无实体配送形式 4、用户自提
-            map.put("logistics_type", 4);
-            //发货模式，发货模式枚举值：1、UNIFIED_DELIVERY（统一发货）2、SPLIT_DELIVERY（分拆发货） 示例值: UNIFIED_DELIVERY
-            map.put("delivery_mode", 1);
-
+        } catch (Exception e) {
+            log.error("【微信小程序】上传发货信息失败：{}", orderSn, e);
+            throw e;
         }
-        //上传时间，用于标识请求的先后顺序 示例值: `2022-12-15T13:29:35.120+08:00`
-        map.put("upload_time", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(ZonedDateTime.now()));
-
-        //支付者，支付者信息
-        Connect connect = connectService.queryConnect(ConnectQueryDTO.builder().userId(order.getMemberId()).unionType(SourceEnum.WECHAT_MP_OPEN_ID.name()).build());
-        if (connect == null) {
-            return;
-        }
-        map.put("payer", new Payer(connect.getUnionId()));
-        this.doPostWithJson(url, map);
-
-
     }
 
     /**
@@ -195,28 +214,38 @@ public class WechatMPServiceImpl implements WechatMPService {
      */
     @Override
     public void notifyConfirmReceive(String orderSn) {
+        log.info("【微信小程序】订单确认收货，订单号：{}", orderSn);
         Order order = orderService.getBySn(orderSn);
 
         //是否是微信小程序订单 && 微信支付
         if (!order.getClientType().equals(ClientTypeEnum.WECHAT_MP.name())
                 || !order.getPaymentMethod().equals(PaymentMethodEnum.WECHAT.name())) {
+            log.info("【微信小程序】非微信小程序/非微信支付，跳过确认收货：{}", orderSn);
             return;
         }
         //是否开通发货信息管理
         if (!isTradeManaged()) {
+            log.info("【微信小程序】未开通发货信息管理服务，跳过确认收货");
             return;
         }
-        Map<String, Object> map = new HashMap<>(2);
-        map.put("transaction_id", order.getReceivableNo());
-        map.put("merchant_trade_no", order.getPayOrderNo());
-        map.put("merchant_id", order.getPayOrderNo());
 
-        Setting systemSetting = settingService.get(SettingEnum.WECHAT_PAYMENT.name());
-        WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(systemSetting.getSettingValue(), WechatPaymentSetting.class);
-        map.put("merchant_id", wechatPaymentSetting.getMchId());
-        //快递签收时间，时间戳形式
-        map.put("received_time", System.currentTimeMillis() / 1000); // 微信要求的是秒级时间戳
-        this.doPostWithJson(confirmReceiveUrl, map);
+        try {
+            Map<String, Object> map = new HashMap<>(2);
+            map.put("transaction_id", order.getReceivableNo());
+//            map.put("merchant_trade_no", order.getPayOrderNo());
+//            map.put("merchant_id", order.getPayOrderNo());
+
+            Setting systemSetting = settingService.get(SettingEnum.WECHAT_PAYMENT.name());
+            WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(systemSetting.getSettingValue(), WechatPaymentSetting.class);
+            map.put("merchant_id", wechatPaymentSetting.getMchId());
+            //快递签收时间，时间戳形式
+            map.put("received_time", System.currentTimeMillis() / 1000); // 微信要求的是秒级时间戳
+            log.info("【微信小程序】确认收货参数：{}", JSON.toJSONString(map));
+            this.doPostWithJson(confirmReceiveUrl, map);
+            log.info("【微信小程序】确认收货接口调用完成：{}", orderSn);
+        } catch (Exception e) {
+            log.error("【微信小程序】确认收货失败：{}", orderSn, e);
+        }
     }
 
     /**
@@ -224,14 +253,21 @@ public class WechatMPServiceImpl implements WechatMPService {
      * https://developers.weixin.qq.com/miniprogram/dev/platform-capabilities/business-capabilities/order-shipping/order-shipping.html#%E4%B8%83%E3%80%81%E6%9F%A5%E8%AF%A2%E5%B0%8F%E7%A8%8B%E5%BA%8F%E6%98%AF%E5%90%A6%E5%B7%B2%E5%BC%80%E9%80%9A%E5%8F%91%E8%B4%A7%E4%BF%A1%E6%81%AF%E7%AE%A1%E7%90%86%E6%9C%8D%E5%8A%A1
      */
     private Boolean isTradeManaged() {
-
-        Setting systemSetting = settingService.get(SettingEnum.WECHAT_PAYMENT.name());
-        WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(systemSetting.getSettingValue(), WechatPaymentSetting.class);
-        //发送url
-        Map<String, Object> map = new HashMap<>(2);
-        map.put("appid", wechatPaymentSetting.getMpAppId());
-        JSONObject jsonObject = this.doPostWithJson(isTradeManagedUrl, map);
-        return jsonObject.getBooleanValue("is_trade_managed");
+        log.info("【微信小程序】检查是否开通发货信息管理服务");
+        try {
+            Setting systemSetting = settingService.get(SettingEnum.WECHAT_PAYMENT.name());
+            WechatPaymentSetting wechatPaymentSetting = JSON.parseObject(systemSetting.getSettingValue(), WechatPaymentSetting.class);
+            //发送url
+            Map<String, Object> map = new HashMap<>(2);
+            map.put("appid", wechatPaymentSetting.getMpAppId());
+            log.info("【微信小程序】检查开通状态appid：{}", wechatPaymentSetting.getMpAppId());
+            JSONObject jsonObject = this.doPostWithJson(isTradeManagedUrl, map);
+            log.info("【微信小程序】开通状态结果：{}", jsonObject.toJSONString());
+            return jsonObject.getBooleanValue("is_trade_managed");
+        } catch (Exception e) {
+            log.error("【微信小程序】检查发货信息管理服务开通状态失败", e);
+            return false;
+        }
     }
 
     /**
@@ -239,20 +275,24 @@ public class WechatMPServiceImpl implements WechatMPService {
      * https://developers.weixin.qq.com/miniprogram/dev/platform-capabilities/industry/express/business/express_search.html#%E8%8E%B7%E5%8F%96%E8%BF%90%E5%8A%9Bid%E5%88%97%E8%A1%A8get-delivery-list
      */
     private String getDeliveryList(Order order) {
-        //发送url
-
-        Map<String, Object> map = new HashMap<>(2);
-        JSONObject jsonObject = this.doPostWithJson(DeliveryUrl, map);
-        Map<String, String> roomMap = new HashMap<>(2);
-        List<Delivery> deliveryList = JSON.parseArray(jsonObject.getString("delivery_list"), Delivery.class);
-        for (Delivery delivery : deliveryList) {
-            if (order.getLogisticsName().equals(delivery.getDelivery_name())) {
-                return delivery.getDelivery_id();
+        log.info("【微信小程序】获取快递公司编码，物流名称：{}", order.getLogisticsName());
+        try {
+            Map<String, Object> map = new HashMap<>(2);
+            JSONObject jsonObject = this.doPostWithJson(DeliveryUrl, map);
+            List<Delivery> deliveryList = JSON.parseArray(jsonObject.getString("delivery_list"), Delivery.class);
+            for (Delivery delivery : deliveryList) {
+                if (order.getLogisticsName().equals(delivery.getDelivery_name())) {
+                    log.info("【微信小程序】匹配到快递公司：{} -> {}", delivery.getDelivery_name(), delivery.getDelivery_id());
+                    return delivery.getDelivery_id();
+                }
             }
+            log.error("【微信小程序】未找到快递公司：{}", order.getLogisticsName());
+            throw new RuntimeException("未找到快递公司");
+        } catch (Exception e) {
+            log.error("【微信小程序】获取快递公司编码失败", e);
+            throw new RuntimeException("获取快递公司编码失败");
         }
-        throw new RuntimeException("未找到快递公司");
     }
-
 
     /**
      * 请求微信接口
@@ -262,26 +302,35 @@ public class WechatMPServiceImpl implements WechatMPService {
      * @return 返回内容
      */
     private JSONObject doPostWithJson(String url, Map map) {
+        log.info("【微信小程序】请求接口：{}", url);
+        log.info("【微信小程序】请求参数：{}", JSON.toJSONString(map));
         //获取token
         String token = wechatAccessTokenUtil.cgiAccessToken(ClientTypeEnum.WECHAT_MP);
+        log.info("【微信小程序】获取access_token：{}", token);
         //请求链接添加token
-        url += token;
+        String requestUrl = url + token;
         //发起请求
-        String content = HttpUtils.doPostWithJson(url, map);
+        String content = HttpUtils.doPostWithJson(requestUrl, map);
         //记录请求结果
-        log.info("微信小程序请求结果：" + content);
+        log.info("【微信小程序】微信返回结果：" + content);
+        // 4. 空值防护
+        if (content == null) {
+            log.error("【微信小程序】微信接口返回空");
+            throw new ServiceException("微信接口请求失败");
+        }
         //获取请求内容，如果token过期则重新获取，如果出错则抛出错误
         JSONObject jsonObject = JSON.parseObject(content);
         if (("0").equals(jsonObject.get("errcode").toString())) {
             return jsonObject;
         } else if (("40001").equals(jsonObject.get("errcode"))) {
+            log.warn("【微信小程序】token过期，重新获取");
             wechatAccessTokenUtil.removeAccessToken(ClientTypeEnum.WECHAT_MP);
             return this.doPostWithJson(url, map);
         } else {
+            log.error("【微信小程序】接口调用失败：{}", jsonObject.getString("errmsg"));
             throw new ServiceException(jsonObject.get("errmsg").toString());
         }
     }
-
 
     @Data
     @AllArgsConstructor
@@ -333,9 +382,9 @@ public class WechatMPServiceImpl implements WechatMPService {
          */
         private String out_trade_no;
 
-        public OrderKey(Order order,String mchid) {
-            this.order_number_type = 1;
-            this.out_trade_no = order.getPayOrderNo();
+        public OrderKey(Order order, String mchid) {
+            this.order_number_type = 2;
+//            this.out_trade_no = order.getPayOrderNo();
             this.transaction_id = order.getReceivableNo();
             this.mchid = mchid;
         }

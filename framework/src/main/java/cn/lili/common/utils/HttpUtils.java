@@ -1,6 +1,7 @@
 package cn.lili.common.utils;
 
 
+import com.alibaba.fastjson2.JSON;
 import com.xkcoding.http.HttpUtil;
 import com.xkcoding.http.config.HttpConfig;
 import com.xkcoding.http.support.HttpHeader;
@@ -11,11 +12,8 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Map;
-
-import com.alibaba.fastjson2.JSON;
 
 /**
  * HTTP 工具类
@@ -156,7 +154,12 @@ public class HttpUtils {
     public static String doPostWithJson(String reqUrl, Map<String, String> jsonParameters) {
         HttpURLConnection urlConn = null;
         try {
-            urlConn = sendPost(reqUrl, null, "utf-8", HTTP_CONN_TIMEOUT, HTTP_SOCKET_TIMEOUT);
+            URL url = new URL(reqUrl);
+            urlConn = (HttpURLConnection) url.openConnection();
+            urlConn.setRequestMethod("POST");
+            urlConn.setConnectTimeout(HTTP_CONN_TIMEOUT);
+            urlConn.setReadTimeout(HTTP_SOCKET_TIMEOUT);
+            // 请求头必须在连接前设置
             urlConn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             urlConn.setRequestProperty("Accept", "application/json");
             urlConn.setDoOutput(true);
@@ -176,6 +179,10 @@ public class HttpUtils {
             } catch (Exception ex) {
                 log.error("请求异常", ex);
             }
+        } finally {
+            if (urlConn != null) {
+                urlConn.disconnect();
+            }
         }
         return null;
     }
@@ -183,7 +190,12 @@ public class HttpUtils {
     public static String doPostWithJson(String reqUrl, Object object) {
         HttpURLConnection urlConn = null;
         try {
-            urlConn = sendPost(reqUrl, null, "utf-8", HTTP_CONN_TIMEOUT, HTTP_SOCKET_TIMEOUT);
+            URL url = new URL(reqUrl);
+            urlConn = (HttpURLConnection) url.openConnection();
+            urlConn.setRequestMethod("POST");
+            urlConn.setConnectTimeout(HTTP_CONN_TIMEOUT);
+            urlConn.setReadTimeout(HTTP_SOCKET_TIMEOUT);
+            // 请求头必须在连接前设置
             urlConn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             urlConn.setRequestProperty("Accept", "application/json");
             urlConn.setDoOutput(true);
@@ -202,6 +214,10 @@ public class HttpUtils {
                 }
             } catch (Exception ex) {
                 log.error("请求异常", ex);
+            }
+        } finally {
+            if (urlConn != null) {
+                urlConn.disconnect();
             }
         }
         return null;

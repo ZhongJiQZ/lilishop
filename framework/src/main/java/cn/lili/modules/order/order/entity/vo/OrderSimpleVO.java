@@ -29,6 +29,9 @@ public class OrderSimpleVO {
     @Schema(description = "sn")
     private String sn;
 
+    @Schema(description = "第三方付款流水号")
+    private String receivableNo;
+
     @Schema(description = "总价格")
     private Double flowPrice;
 

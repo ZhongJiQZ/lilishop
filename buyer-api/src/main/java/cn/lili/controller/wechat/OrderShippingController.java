@@ -58,46 +58,40 @@ public class OrderShippingController {
         boolean localWxShip = order.getWxUploadShipping() != null && order.getWxUploadShipping() == 1;
         boolean localWxConfirm = order.getWxConfirmReceive() != null && order.getWxConfirmReceive() == 1;
 
-        // ====================== 2. 调用微信云端 get_order ======================
-        JSONObject remoteResult;
+        // ====================== 2. 默认先给 false ======================
+        boolean cloudShip = false;
+        boolean cloudConfirm = false;
+
         try {
-            remoteResult = wechatMPService.getOrderShippingStatus(orderSn);
+            // 调用微信接口
+            JSONObject remoteResult = wechatMPService.getOrderShippingStatus(orderSn);
+
+            // 接口正常才赋值
+            if (remoteResult != null && remoteResult.getIntValue("errcode") == 0) {
+                JSONObject orderInfo = remoteResult.getJSONObject("order");
+                if (orderInfo != null) {
+                    int orderState = orderInfo.getIntValue("order_state");
+                    cloudShip = orderState == 3 || orderState == 4 || orderState == 2;
+                    cloudConfirm = orderState >= 3;
+                }
+            }
         } catch (Exception e) {
-            log.error("微信云端订单状态查询异常，订单号:{}", orderSn, e);
-            throw new ServiceException("订单状态校验失败，请稍后重试");
+            // 异常 → 保持 false
+            log.error("微信订单状态查询异常 orderSn:{}", orderSn, e);
         }
 
-        if (remoteResult == null || remoteResult.getIntValue("errcode") != 0) {
-            String errMsg = (remoteResult != null) ? remoteResult.getString("errmsg") : "接口无响应";
-            log.error("微信接口返回异常 orderSn:{}, errmsg:{}", orderSn, errMsg);
-            throw new ServiceException("微信订单校验失败：" + errMsg);
-        }
-
-        JSONObject orderInfo = remoteResult.getJSONObject("order");
-        if (orderInfo == null) {
-            throw new ServiceException("未查询到订单微信上报信息");
-        }
-
-        // ====================== 3. 官方真实字段：order_state ======================
-        int orderState = orderInfo.getIntValue("order_state");
-
-        // 官方规则：
-        // 1=待发货 2=已发货 3=确认收货 4=交易完成 5=退款 6=待结算
-        boolean cloudShip = orderState == 2;       // 已发货
-        boolean cloudConfirm = orderState >= 3;     // 已确认收货
-
-        // ====================== 4. 一致性校验 ======================
+        // ====================== 3. 不一致 → 强制设为 false ======================
         if (localWxShip != cloudShip) {
-            log.error("订单发货状态不一致 本地:{} 云端:{} orderSn:{}", localWxShip, cloudShip, orderSn);
-            throw new ServiceException("订单发货状态异常");
+            log.error("发货状态不一致 本地:{} 云端:{} orderSn:{}", localWxShip, cloudShip, orderSn);
+            cloudShip = false; // 强制false
         }
 
         if (localWxConfirm != cloudConfirm) {
-            log.error("订单收货状态不一致 本地:{} 云端:{} orderSn:{}", localWxConfirm, cloudConfirm, orderSn);
-            throw new ServiceException("订单收货状态异常");
+            log.error("收货状态不一致 本地:{} 云端:{} orderSn:{}", localWxConfirm, cloudConfirm, orderSn);
+            cloudConfirm = false; // 强制false
         }
 
-        // ====================== 5. 正常返回 ======================
+        // ====================== 4. 最终返回 ======================
         OrderShippingStatusVO vo = new OrderShippingStatusVO();
         vo.setOrderSn(orderSn);
         vo.setOrderStatus(order.getOrderStatus());

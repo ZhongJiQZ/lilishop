@@ -239,13 +239,12 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
 
     /**
      * 获取当前用户的未读IM消息总数（包括试穿员和会员）
-     * @param accessToken
+     * @param to
      * @return 未读消息数
      */
     @Override
-    public Long getUnreadCount(String accessToken) {
-        AuthUser authUser = UserContext.getAuthUser(accessToken);
-        String toUser = authUser.getId();
+    public Long getUnreadCount(String to) {
+        String toUser = to;
 
         // 先查是不是商家（storeId）
         Store store = storeService.getById(toUser);
@@ -258,9 +257,6 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             if (member != null && member.getHaveStore() && StrUtil.isNotBlank(member.getStoreId())) {
                 // 试穿员 → 用 storeId 统计消息
                 toUser = member.getStoreId();
-            } else {
-                // 普通会员 → 用 userId 统计
-                toUser = authUser.getId();
             }
         }
 

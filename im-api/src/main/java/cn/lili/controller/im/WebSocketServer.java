@@ -257,7 +257,7 @@ public class WebSocketServer {
 
                 // 给【接收消息的人】推送最新未读数量
                 sendMessage(messageOperation.getTo(),
-                        new MessageVO(MessageResultType.UN_READ, imMessageService.getUnreadCount(accessToken)));
+                        new MessageVO(MessageResultType.UN_READ, imMessageService.getUnreadCount(messageOperation.getTo())));
                 break;
             case READ:
                 if (StrUtil.isNotEmpty(messageOperation.getTalkId())) {
