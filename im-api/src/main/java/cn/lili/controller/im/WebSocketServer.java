@@ -213,7 +213,7 @@ public class WebSocketServer {
                     fromMember = memberService.getById(fromId);
                     toMember = memberService.getById(toId);
                     log.error("发送人：{}, 接收人：{}, 管理员：{}", fromId, toId, adminUser != null?JSON.toJSONString(adminUser):"为空");
-                    imMessageService.deductPlatformCoin(fromId, toId, adminUser);
+                    imMessageService.deductPlatformCoin(fromId, toId, adminUser, fromMember);
                 } catch (ServiceException e) {
                     // 余额不足 → 返回提示，不发送消息
                     log.error("余额不足 → 返回提示，不发送消息：{}", e.getMsg());

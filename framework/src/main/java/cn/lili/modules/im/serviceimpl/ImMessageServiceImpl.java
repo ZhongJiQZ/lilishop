@@ -146,7 +146,7 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
     }
 
     @Override
-    public boolean deductPlatformCoin(String fromUserId, String toUserId, AdminUser adminUser) {
+    public boolean deductPlatformCoin(String fromUserId, String toUserId, AdminUser adminUser, Member fromMember) {
         try {
             if(adminUser != null) {
                 log.info("管理员发送消息，不消耗预存款");
@@ -154,13 +154,12 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             }
             // 1. 判断是否为商家/管理员 → 不扣费
             Store store = storeService.getById(fromUserId);
-            if(store != null) {
+            if(store != null || (fromMember!=null && fromMember.getHaveStore() && fromMember.getStoreId()!=null)) {
                 log.info("商家发送消息，不消耗预存款");
                 return true;
             }
 
             // 2. 获取发送人信息
-            Member fromMember = memberService.getById(fromUserId);
             if (fromMember == null) {
                 log.error("发送用户不存在，用户ID：{}", fromUserId);
                 throw new ServiceException(ResultCode.USER_NOT_EXIST, "发送用户不存在");
