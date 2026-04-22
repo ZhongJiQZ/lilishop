@@ -110,7 +110,10 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             message.setText(SensitiveWordsFilter.filter(message.getText()));
         });
         ListSort(messageList);
-        readMessage(messageList, messageQueryParams);
+//        readMessage(messageList, messageQueryParams);
+        if (StrUtil.isNotBlank(messageQueryParams.getTalkId())) {
+            this.readAllByTalkId(messageQueryParams.getTalkId());
+        }
         return messageList;
     }
 
@@ -333,4 +336,41 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
         this.updateBatchById(messageList);
     }
 
+
+
+    /**
+     * 将某个对话的所有未读消息标为已读
+     */
+    public void readAllByTalkId(String talkId) {
+        AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());
+        if (authUser == null) {
+            return;
+        }
+
+        // 当前用户是谁（会员/试穿员用 id，店铺用 storeId）
+        //判断用户类型
+        Member member = memberService.getById(authUser.getId());
+        String toUserId = "";
+        if (UserEnums.MEMBER.equals(authUser.getRole())) {
+            if (member != null && member.getHaveStore() && member.getStoreId() != null) {
+                toUserId = member.getStoreId();
+            } else {
+                toUserId = authUser.getId();
+            }
+        } else if (UserEnums.STORE.equals(authUser.getRole())) {
+            toUserId = authUser.getStoreId();
+        }
+
+        // 条件：
+        // 1. 属于当前 talkId
+        // 2. 消息是发给我的
+        // 3. 未读
+        LambdaUpdateWrapper<ImMessage> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(ImMessage::getTalkId, talkId);
+        wrapper.eq(ImMessage::getToUser, toUserId);
+        wrapper.eq(ImMessage::getIsRead, false);
+        wrapper.set(ImMessage::getIsRead, true);
+
+        this.update(wrapper);
+    }
 }

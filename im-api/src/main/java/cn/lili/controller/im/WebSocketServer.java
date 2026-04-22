@@ -202,12 +202,16 @@ public class WebSocketServer {
             case MESSAGE:
                 ImMessage imMessage = new ImMessage(messageOperation);
                 AdminUser adminUser = null;
+                Member fromMember = null;
+                Member toMember = null;
                 String fromId = "";
                 try {
                     // 发送消息消耗平台币（自动识别 to 是会员ID / 店铺ID）
                     fromId = messageOperation.getFrom();
                     String toId = messageOperation.getTo();
                     adminUser = adminUserService.getById(fromId);
+                    fromMember = memberService.getById(fromId);
+                    toMember = memberService.getById(toId);
                     log.error("发送人：{}, 接收人：{}, 管理员：{}", fromId, toId, adminUser != null?JSON.toJSONString(adminUser):"为空");
                     imMessageService.deductPlatformCoin(fromId, toId, adminUser);
                 } catch (ServiceException e) {
@@ -247,6 +251,14 @@ public class WebSocketServer {
 
                 //发送消息
                 sendMessage(messageOperation.getTo(), new MessageVO(MessageResultType.MESSAGE, imMessage));
+                //转发给试穿员(试穿员给试穿员)
+                if(fromMember != null && fromMember.getHaveStore() && fromMember.getStoreId() != null && sessionPools.containsKey(fromMember.getStoreId())) {
+                    sendMessage(fromMember.getStoreId(), new MessageVO(MessageResultType.MESSAGE, imMessage));
+                }
+                //转发给试穿员(试穿员给试穿员)
+                if(toMember != null && toMember.getHaveStore() && toMember.getStoreId() != null && sessionPools.containsKey(toMember.getStoreId())) {
+                    sendMessage(toMember.getStoreId(), new MessageVO(MessageResultType.MESSAGE, imMessage));
+                }
                 // 关键：同时推给发送方和接收方
 //                String fromSessionId = messageOperation.getFrom();  // 店铺是 storeId，买家是 userId
                 String toSessionId   = messageOperation.getTo();
