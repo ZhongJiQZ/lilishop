@@ -140,7 +140,7 @@ logging:
 
 springdoc:
   api-docs:
-    enabled: true
+    enabled: false
   swagger-ui:
     path: /swagger-ui/index.html
   packages-to-scan: cn.lili.controller
