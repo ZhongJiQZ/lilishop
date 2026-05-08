@@ -764,7 +764,7 @@ public class EsGoodsIndexServiceImpl extends ElasticsearchIndexAbstractService i
     }
 
     private void executeCleanInvalidPromotions() {
-        for (int i = 0; ; i++) {
+        for (int i = 0; i < 1000; i++) {
             org.springframework.data.domain.Page<EsGoodsIndex> all = goodsIndexRepository.findAll(PageRequest.of(i, 1000));
             if (all.isEmpty()) {
                 break;
