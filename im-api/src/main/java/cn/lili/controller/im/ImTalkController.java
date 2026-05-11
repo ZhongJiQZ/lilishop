@@ -98,4 +98,11 @@ public class ImTalkController {
         imTalkService.disable(id);
         return ResultUtil.success(ResultCode.SUCCESS);
     }
+
+    @Operation(summary = "获取所有席位")
+    @Parameter(name = "imTalkQueryParams", description = "聊天查询参数", required = true)
+    @GetMapping("/seat/list")
+    public ResultMessage<List<ImTalkVO>> getAllSeatList(IMTalkQueryParams imTalkQueryParams) {
+        return ResultUtil.data(imTalkService.getAllSeatList(imTalkQueryParams));
+    }
 }

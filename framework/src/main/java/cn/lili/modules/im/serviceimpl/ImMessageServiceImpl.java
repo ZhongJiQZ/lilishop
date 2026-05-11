@@ -358,6 +358,15 @@ public class ImMessageServiceImpl extends ServiceImpl<ImMessageMapper, ImMessage
             }
         } else if (UserEnums.STORE.equals(authUser.getRole())) {
             toUserId = authUser.getStoreId();
+        } else if (UserEnums.MANAGER.equals(authUser.getRole())) {
+            ImTalk talk = talkMapper.selectById(talkId);
+            if (talk != null) {
+                if(talk.getStoreFlag1()){
+                    toUserId = talk.getUserId1();
+                }else if(talk.getStoreFlag2()){
+                    toUserId = talk.getUserId2();
+                }
+            }
         }
 
         // 条件：

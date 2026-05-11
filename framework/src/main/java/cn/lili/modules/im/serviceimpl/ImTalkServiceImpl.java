@@ -1,5 +1,6 @@
 package cn.lili.modules.im.serviceimpl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.exception.ServiceException;
@@ -463,18 +464,89 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         return imTalkVOList;
     }
 
-    // ====================== 工具方法：根据 talkId 获取 storeId ======================
-    private String getStoreIdFromImTalk(List<ImTalk> imTalkList, String talkId) {
-        for (ImTalk imTalk : imTalkList) {
-            if (imTalk.getId().equals(talkId)) {
-                if (Boolean.TRUE.equals(imTalk.getStoreFlag1())) {
-                    return imTalk.getUserId1();
-                } else if (Boolean.TRUE.equals(imTalk.getStoreFlag2())) {
-                    return imTalk.getUserId2();
+    @Override
+    public List<ImTalkVO> getAllSeatList(IMTalkQueryParams imTalkQueryParams) {
+        AuthUser authUser = UserContext.getCurrentUser();
+        if (authUser == null) {
+            throw new ServiceException(ResultCode.USER_NOT_LOGIN);
+        }
+
+        // 1. 获取所有正常营业的店铺
+        LambdaQueryWrapper<Store> storeQuery = new LambdaQueryWrapper<>();
+        storeQuery.eq(Store::getStoreDisable, StoreStatusEnum.OPEN.name());
+        storeQuery.orderByDesc(Store::getCreateTime);
+        List<Store> storeList = storeService.list(storeQuery);
+
+        boolean isNotAdmin = !"admin".equals(authUser.getUsername());
+        String currentAgentId = authUser.getId();
+
+        // 2. 获取所有会话
+        LambdaQueryWrapper<ImTalk> talkQuery = new LambdaQueryWrapper<>();
+        talkQuery.orderByDesc(ImTalk::getLastTalkTime);
+        List<ImTalk> allTalkList = this.list(talkQuery);
+
+        // 3. 按店铺ID分组
+        Map<String, List<ImTalk>> talkMap = allTalkList.stream()
+                .collect(Collectors.groupingBy(t -> {
+                    if (Boolean.TRUE.equals(t.getStoreFlag1())) return t.getUserId1();
+                    if (Boolean.TRUE.equals(t.getStoreFlag2())) return t.getUserId2();
+                    return "0";
+                }));
+
+        // 4. 构造席位列表
+        List<ImTalkVO> result = new ArrayList<>();
+        for (Store store : storeList) {
+            if (isNotAdmin && !currentAgentId.equals(store.getAgentId())) {
+                continue;
+            }
+
+            ImTalkVO vo = new ImTalkVO();
+            vo.setId(store.getId());
+            vo.setUserId(store.getId());
+            vo.setName(store.getStoreName() + "（" + store.getAgentName() + "）");
+            vo.setFace(store.getStoreLogo());
+            vo.setStoreFlag(true);
+            vo.setTop(false);
+            vo.setDisable(false);
+
+            // 赋值最后一条消息
+            List<ImTalk> talkList = talkMap.get(store.getId());
+            if (CollUtil.isNotEmpty(talkList)) {
+                ImTalk lastTalk = talkList.stream()
+                        .max(Comparator.comparing(ImTalk::getLastTalkTime))
+                        .orElse(null);
+
+                if (lastTalk != null) {
+                    vo.setLastTalkTime(lastTalk.getLastTalkTime());
+                    vo.setLastTalkMessage(SensitiveWordsFilter.filter(lastTalk.getLastTalkMessage()));
+                    vo.setLastMessageType(lastTalk.getLastMessageType());
                 }
             }
+
+            result.add(vo);
         }
-        return "0";
+
+        // ==========================================
+        // ✅ 正确统计店铺未读（完全匹配你的ImMessage）
+        // ==========================================
+        for (ImTalkVO vo : result) {
+            long unreadCount = imMessageService.count(
+                    new LambdaQueryWrapper<ImMessage>()
+                            .eq(ImMessage::getToUser, vo.getId())  // 消息发给店铺
+                            .eq(ImMessage::getIsRead, false)       // 未读
+            );
+            vo.setUnread(unreadCount);
+        }
+
+        // 排序
+        return result.stream()
+                .sorted((a, b) -> {
+                    if (a.getLastTalkTime() == null && b.getLastTalkTime() == null) return 0;
+                    if (a.getLastTalkTime() == null) return 1;
+                    if (b.getLastTalkTime() == null) return -1;
+                    return b.getLastTalkTime().compareTo(a.getLastTalkTime());
+                })
+                .collect(Collectors.toList());
     }
 
     /**
