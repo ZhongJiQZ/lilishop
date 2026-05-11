@@ -25,6 +25,7 @@ import cn.lili.modules.member.service.StoreCollectionService;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.service.StoreService;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
+import cn.lili.modules.wechat.util.WechatSecurityUtil;
 import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -58,6 +59,8 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
     private StoreService storeService;
     @Autowired
     private StoreCollectionService storeCollectionService;
+    @Autowired
+    private WechatSecurityUtil wechatSecurityUtil;
 
     @Override
     public IPage<CirclePostVO> queryByParams(CirclePostSearchParams circlePostSearchParams) {
@@ -99,6 +102,19 @@ public class CirclePostServiceImpl extends ServiceImpl<CirclePostMapper, CircleP
         if (tokenUser == null) {
             throw new ServiceException(ResultCode.USER_NOT_LOGIN);
         }
+
+        // ================== 微信内容安全检测（文本 + 图片） ==================
+        // 1. 文本安全检测（帖子内容）
+        wechatSecurityUtil.checkText(circlePostOperationDTO.getContent());
+
+        // 2. 图片安全检测（List<String> 类型，自动循环检测）
+        if (circlePostOperationDTO.getImages() != null && !circlePostOperationDTO.getImages().isEmpty()) {
+            for (String imageUrl : circlePostOperationDTO.getImages()) {
+                wechatSecurityUtil.checkImageUrl(imageUrl);
+            }
+        }
+        // ====================================================================
+
         CirclePost circlePost = new CirclePost(circlePostOperationDTO);
         circlePost.setUserId(tokenUser.getId());
         circlePost.setUserType(tokenUser.getRole().name());

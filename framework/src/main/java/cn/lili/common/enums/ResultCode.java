@@ -554,13 +554,21 @@ public enum ResultCode {
     CHAT_GIFT_NOT_EXIST(80600, "礼物不存在或已删除"),
 
     /**
-     * E证通 - 错误码从 80600 开始
+     * E证通 - 错误码从 80700 开始
      */
     EID_VERIFY_REQUIRED(80700, "请先完成E证通人脸核身认证，再申请店铺"),
     EID_INFO_NOT_MATCH(80701, "申请人信息与E证通实名信息不一致"),
     EID_ALREADY_VERIFIED(80702, "已完成实名认证，不可修改资料或重复获取认证链接"),
     EID_COMPANY_REQUIRED(80703, "请先提交企业资料并填写法人姓名与身份证号"),
     EID_ID_CARD_DUPLICATE(80704, "该身份证号已被其他账号使用"),
+
+    /**
+     * 微信内容安全 - 错误码从 80800 开始
+     */
+    STORE_TEXT_RISK(80800, "填写内容包含违规信息"),
+    STORE_IMAGE_RISK(80801, "图片包含违规内容"),
+    STORE_TEXT_CHECK_ERROR(80802, "内容安全检测服务异常"),
+    STORE_IMAGE_CHECK_ERROR(80802, "内容安全检测服务异常"),
 
     /**
      * 其他

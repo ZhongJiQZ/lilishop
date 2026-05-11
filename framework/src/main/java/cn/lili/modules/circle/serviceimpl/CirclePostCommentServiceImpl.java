@@ -15,12 +15,10 @@ import cn.lili.modules.circle.entity.vos.CirclePostCommentVO;
 import cn.lili.modules.circle.mapper.CirclePostCommentMapper;
 import cn.lili.modules.circle.mapper.CirclePostMapper;
 import cn.lili.modules.circle.service.CirclePostCommentService;
-import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.mapper.MemberMapper;
-import cn.lili.modules.order.order.entity.dos.Order;
-import cn.lili.modules.order.order.entity.enums.PayStatusEnum;
 import cn.lili.modules.order.order.mapper.OrderMapper;
 import cn.lili.modules.system.aspect.annotation.SystemLogPoint;
+import cn.lili.modules.wechat.util.WechatSecurityUtil;
 import cn.lili.mybatis.util.PageUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -49,6 +47,8 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
     private OrderMapper orderMapper;
     @Autowired
     private MemberMapper memberMapper;
+    @Autowired
+    private WechatSecurityUtil wechatSecurityUtil;
 
     @Override
     public List<CirclePostCommentVO> getCirclePostCommentByList(CirclePostCommentSearchParams searchParams) {
@@ -69,21 +69,26 @@ public class CirclePostCommentServiceImpl extends ServiceImpl<CirclePostCommentM
         }
 
         // 1. 判断用户是否购买过该商品
-        QueryWrapper<Order> orderWrapper = new QueryWrapper<>();
-        orderWrapper.eq("member_id", tokenUser.getId())// 是当前用户
-                .eq("store_id", circlePost.getStoreId())// 在这家店铺
-                .in("pay_status", PayStatusEnum.PAID.name());// 已支付
-        long buyCount = orderMapper.selectCount(orderWrapper);
-        boolean hasBuy = buyCount > 0;
+//        QueryWrapper<Order> orderWrapper = new QueryWrapper<>();
+//        orderWrapper.eq("member_id", tokenUser.getId())// 是当前用户
+//                .eq("store_id", circlePost.getStoreId())// 在这家店铺
+//                .in("pay_status", PayStatusEnum.PAID.name());// 已支付
+//        long buyCount = orderMapper.selectCount(orderWrapper);
+//        boolean hasBuy = buyCount > 0;
 
         // 2. 判断是否是会员
-        Member member = memberMapper.selectById(tokenUser.getId());
-        boolean isVip = member.getIsVip() == 1;
+//        Member member = memberMapper.selectById(tokenUser.getId());
+//        boolean isVip = member.getIsVip() == 1;
 
         // 3. 未购买 + 不是会员 → 禁止评论
-        if (!hasBuy && !isVip) {
-            throw new ServiceException(ResultCode.CIRCLE_POST_COMMENT_PERMISSION_DENIED);
-        }
+//        if (!hasBuy && !isVip) {
+//            throw new ServiceException(ResultCode.CIRCLE_POST_COMMENT_PERMISSION_DENIED);
+//        }
+
+        // ================== 微信内容安全检测（文本 + 图片） ==================
+        // 1. 文本检测
+        wechatSecurityUtil.checkText(commentOperationDTO.getContent());
+        // ====================================================================
 
         CirclePostComment circlePostComment = new CirclePostComment(commentOperationDTO);
 //        CirclePostComment circlePostComment = CirclePostComment.fromDTO(commentOperationDTO);

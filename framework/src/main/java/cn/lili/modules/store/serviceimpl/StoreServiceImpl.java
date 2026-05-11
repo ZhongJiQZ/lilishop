@@ -3,6 +3,7 @@ package cn.lili.modules.store.serviceimpl;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
 import cn.lili.cache.Cache;
@@ -47,6 +48,7 @@ import cn.lili.modules.system.entity.dos.Setting;
 import cn.lili.modules.system.entity.dto.EidSetting;
 import cn.lili.modules.system.entity.enums.SettingEnum;
 import cn.lili.modules.system.service.SettingService;
+import cn.lili.modules.wechat.util.WechatSecurityUtil;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.StoreTagsEnum;
@@ -88,6 +90,8 @@ import java.util.Objects;
 @Slf4j
 @Service
 public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements StoreService {
+    @Autowired
+    private WechatSecurityUtil wechatSecurityUtil;
 
     /**
      * 会员
@@ -555,6 +559,25 @@ public class StoreServiceImpl extends ServiceImpl<StoreMapper, Store> implements
      */
     private boolean doApplyFirstStep(StoreCompanyDTO storeCompanyDTO, boolean strictStoreStatus) {
         Store store = getStoreByMember();
+
+        // ================== 微信内容安全检测 ==================
+        // 文本检测
+        String checkText = StrUtil.join(",",
+                storeCompanyDTO.getCompanyName(),
+                storeCompanyDTO.getLegalName(),
+                storeCompanyDTO.getCompanyAddress(),
+                storeCompanyDTO.getLinkName(),
+                storeCompanyDTO.getScope(),
+                storeCompanyDTO.getStoreDesc()
+        );
+        wechatSecurityUtil.checkText(checkText);
+
+        // 营业执照
+        wechatSecurityUtil.checkImageUrl(storeCompanyDTO.getLicencePhoto());
+
+        // 法人身份证（支持多张逗号分隔）
+        wechatSecurityUtil.checkImageUrls(storeCompanyDTO.getLegalPhoto());
+        // ======================================================
 
         if (store == null) {
             AuthUser authUser = Objects.requireNonNull(UserContext.getCurrentUser());

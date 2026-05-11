@@ -42,13 +42,13 @@ public class StoreCompanyDTO {
     @Schema(description = "电子邮箱")
     private String companyEmail;
 
-    @Min(1)
-    @Schema(description = "员工总数")
-    private Integer employeeNum;
-
-    @Min(1)
-    @Schema(description = "注册资金")
-    private Double registeredCapital;
+//    @Min(1)
+//    @Schema(description = "员工总数")
+//    private Integer employeeNum;
+//
+//    @Min(1)
+//    @Schema(description = "注册资金")
+//    private Double registeredCapital;
 
     @Length(min = 2, max = 20)
     @NotBlank(message = "联系人姓名为空")
