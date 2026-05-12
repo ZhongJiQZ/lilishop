@@ -742,9 +742,31 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (CollUtil.isEmpty(derivedList)) {
             return;
         }
+        // ====================== 【修改点1】获取模板商品的完整相册列表 ======================
+        List<GoodsGallery> templateGalleryList = goodsGalleryService.goodsGalleryList(templateGoodsId);
+        List<String> templateGalleryUrls = templateGalleryList.stream()
+                .map(GoodsGallery::getOriginal)
+                .collect(Collectors.toList());
+        // ==================================================================================
         for (Goods child : derivedList) {
             child.setPrice(templateGoods.getPrice());
+            child.setGoodsName(templateGoods.getGoodsName());                // 同步商品名称
+            child.setOriginal(templateGoods.getOriginal());                  // 同步商品原图
+            child.setThumbnail(templateGoods.getThumbnail());                // 同步商品缩略图
+            child.setSmall(templateGoods.getSmall());                        // 同步商品小图
+//            child.setIntro(templateGoods.getIntro());                        // 同步商品详情
+//            child.setMobileIntro(templateGoods.getMobileIntro());            // 同步移动端详情
+//            child.setSellingPoint(templateGoods.getSellingPoint());          // 同步商品卖点
+//            child.setGoodsVideo(templateGoods.getGoodsVideo());              // 同步商品视频
             this.updateById(child);
+            // ====================== 【修改点2】同步子商品的 GoodsGallery 相册 ======================
+            // 1. 删除子商品原有相册
+            goodsGalleryService.remove(Wrappers.lambdaQuery(GoodsGallery.class).eq(GoodsGallery::getGoodsId, child.getId()));
+            // 2. 插入模板商品最新相册（完全同步）
+            if (CollUtil.isNotEmpty(templateGalleryUrls)) {
+                goodsGalleryService.add(templateGalleryUrls, child.getId());
+            }
+            // ======================================================================================
             List<GoodsSku> childSkus = goodsSkuService.list(new LambdaQueryWrapper<GoodsSku>()
                     .eq(GoodsSku::getGoodsId, child.getId())
                     .eq(GoodsSku::getDeleteFlag, false));
@@ -753,6 +775,14 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
                     GoodsSku match = findMatchingTemplateSku(templateSkus, cs);
                     if (match != null) {
                         cs.setPrice(match.getPrice());
+                        cs.setGoodsName(templateGoods.getGoodsName());          // 同步商品名称
+//                        cs.setCost(match.getCost());                            // 同步成本价
+//                        cs.setSpecs(match.getSpecs());                          // 同步规格JSON
+//                        cs.setSimpleSpecs(match.getSimpleSpecs());              // 同步简易规格
+                        cs.setOriginal(match.getOriginal());                    // 同步SKU原图
+                        cs.setThumbnail(match.getThumbnail());                  // 同步SKU缩略图
+                        cs.setSmall(match.getSmall());                          // 同步SKU小图
+                        cs.setBig(match.getBig());                              // 同步SKU大图
                     }
                 }
                 goodsSkuService.updateBatchById(childSkus);

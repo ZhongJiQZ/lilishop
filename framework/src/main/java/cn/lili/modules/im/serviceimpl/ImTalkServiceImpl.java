@@ -539,14 +539,7 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
         }
 
         // 排序
-        return result.stream()
-                .sorted((a, b) -> {
-                    if (a.getLastTalkTime() == null && b.getLastTalkTime() == null) return 0;
-                    if (a.getLastTalkTime() == null) return 1;
-                    if (b.getLastTalkTime() == null) return -1;
-                    return b.getLastTalkTime().compareTo(a.getLastTalkTime());
-                })
-                .collect(Collectors.toList());
+        return result;
     }
 
     /**
