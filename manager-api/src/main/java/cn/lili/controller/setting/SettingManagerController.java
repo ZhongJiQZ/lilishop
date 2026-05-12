@@ -11,10 +11,7 @@ import cn.lili.modules.system.entity.dto.*;
 import cn.lili.modules.system.entity.dto.connect.ConnectSetting;
 import cn.lili.modules.system.entity.dto.connect.QQConnectSetting;
 import cn.lili.modules.system.entity.dto.connect.WechatConnectSetting;
-import cn.lili.modules.system.entity.dto.payment.AlipayPaymentSetting;
-import cn.lili.modules.system.entity.dto.payment.PaymentSupportSetting;
-import cn.lili.modules.system.entity.dto.payment.UnionPaymentSetting;
-import cn.lili.modules.system.entity.dto.payment.WechatPaymentSetting;
+import cn.lili.modules.system.entity.dto.payment.*;
 import cn.lili.modules.system.entity.dto.payment.dto.PaymentSupportForm;
 import cn.lili.modules.system.entity.enums.SettingEnum;
 import cn.lili.modules.system.service.SettingService;
@@ -178,6 +175,10 @@ public class SettingManagerController {
                 return setting == null ?
                         ResultUtil.data(new WechatPaymentSetting()) :
                         ResultUtil.data(JSONUtil.toBean(setting.getSettingValue(), WechatPaymentSetting.class));
+            case WECHAT_VIRTUAL_PAYMENT:
+                return setting == null ?
+                        ResultUtil.data(new WechatVirtualPaySetting()) :
+                        ResultUtil.data(JSONUtil.toBean(setting.getSettingValue(), WechatVirtualPaySetting.class));
             case SECKILL_SETTING:
                 return setting == null ?
                         ResultUtil.data(new SeckillSetting()) :

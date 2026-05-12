@@ -73,4 +73,9 @@ public interface RechargeService extends IService<Recharge> {
      * @return
      */
     Double getRecharge(Date[] dates, PaymentMethodEnum paymentMethodEnum);
+
+    /**
+     * 判断订单是否已完成（幂等）
+     */
+    boolean isOrderFinished(String outTradeNo);
 }

@@ -232,4 +232,14 @@ public class RechargeServiceImpl extends ServiceImpl<RechargeMapper, Recharge> i
         }
         return this.baseMapper.getRecharge(queryWrapper);
     }
+
+    @Override
+    public boolean isOrderFinished(String rechargeSn) {
+        Recharge recharge = this.getRecharge(rechargeSn);
+        if (recharge == null) {
+            return false;
+        }
+        // 已支付 → 回调不再处理
+        return PayStatusEnum.PAID.name().equals(recharge.getPayStatus());
+    }
 }

@@ -2,7 +2,6 @@ package cn.lili.modules.connect.serviceimpl;
 
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.lili.cache.Cache;
 import cn.lili.common.enums.ClientTypeEnum;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.exception.ServiceException;
@@ -32,15 +31,16 @@ import cn.lili.modules.system.entity.enums.SettingEnum;
 import cn.lili.modules.system.service.SettingService;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.MemberTagsEnum;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +52,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.AlgorithmParameters;
 import java.security.Security;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 联合登陆接口实现
@@ -79,6 +80,9 @@ public class ConnectServiceImpl extends ServiceImpl<ConnectMapper, Connect> impl
      */
     @Autowired
     private RocketmqCustomProperties rocketmqCustomProperties;
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -132,6 +136,12 @@ public class ConnectServiceImpl extends ServiceImpl<ConnectMapper, Connect> impl
         map.put("sessionKey", sessionKey);
         map.put("unionId", unionId);
         map.put("openId", openId);
+
+        // ========== 新增：以 openId 为key 缓存 sessionKey 供虚拟支付使用 ==========
+        if (StrUtil.isNotBlank(openId) && StrUtil.isNotBlank(sessionKey)) {
+            // 缓存7天，和小程序会话时效对齐
+            redisTemplate.opsForValue().set("MP_SESSION_KEY:" + openId, sessionKey, 7, TimeUnit.DAYS);
+        }
 
         //微信联合登陆参数
         return phoneMpBindAndLogin(map.get("sessionKey"), params, map.get("openId"), map.get("unionId"));
