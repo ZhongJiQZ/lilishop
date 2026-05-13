@@ -454,6 +454,7 @@ public class ImTalkServiceImpl extends ServiceImpl<ImTalkMapper, ImTalk> impleme
 //                                Store store = storeService.getById(storeId);
                                 if (store != null) {
                                     vo.setName(vo.getName() + "（" + store.getStoreName() + "-" + store.getAgentName() + "）");
+                                    vo.setAgentId(store.getId());
                                 }
                                 return vo;
                             });

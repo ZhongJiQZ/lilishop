@@ -35,6 +35,9 @@ public class ImTalkVO extends BaseTenantEntity {
     @Schema(description = "用户名字")
     private String name;
 
+    @Schema(description = "代理人ID")
+    private String agentId;
+
     @Schema(description = "用户头像")
     private String face;
 
